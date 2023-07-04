@@ -1,7 +1,7 @@
 import Foundation
 import ConsoleKit
 import PathKit
-import SwiftSyntaxParser
+import SwiftSyntax
 
 public final class DependancyContanierGenerator: Command {
     public static var name = "generate"

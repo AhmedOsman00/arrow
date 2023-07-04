@@ -1,17 +1,17 @@
 import Foundation
-import SwiftSyntaxParser
 import SwiftSyntax
 
-class Parser: SyntaxVisitor {
+class ArrowParser: SyntaxVisitor {
     private var types = Set<Type>()
     private let module: String
     private let scope: Scope
     private let imports: Set<String>
 
-    init(module: String, scope: Scope, imports: Set<String>) {
+    init(viewMode: SyntaxTreeViewMode, module: String, scope: Scope, imports: Set<String>) {
         self.module = module
         self.scope = scope
         self.imports = imports
+        super.init(viewMode: viewMode)
     }
     
     override func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {

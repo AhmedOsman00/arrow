@@ -17,7 +17,7 @@ let package = Package(
     dependencies: [
         // Dependencies declare other packages that this package depends on.
         .package(url: "https://github.com/vapor/console-kit.git", from: "4.5.0"),
-        .package(url: "https://github.com/apple/swift-syntax.git", .exact("0.50600.1")),
+        .package(url: "https://github.com/apple/swift-syntax.git", .exact("508.0.0")),
         // PathKit needs to be exact to avoid a SwiftPM bug where dependency resolution takes a very long time.
         .package(url: "https://github.com/kylef/PathKit.git", .exact("1.0.1")),
         .package(url: "https://github.com/tuist/XcodeProj.git", .upToNextMajor(from: "8.8.0"))
@@ -34,20 +34,11 @@ let package = Package(
                 "PathKit",
                 .product(name: "ConsoleKit", package: "console-kit"),
                 .product(name: "SwiftSyntax", package: "swift-syntax"),
-                .product(name: "SwiftSyntaxParser", package: "swift-syntax"),
-                "XcodeProj",
-                "lib_InternalSwiftSyntaxParser"
-            ],
-            linkerSettings: [
-                .unsafeFlags(["-Xlinker", "-dead_strip_dylibs"])
+                .product(name: "SwiftParser", package: "swift-syntax"),
+                "XcodeProj"
             ]),
         .testTarget(
             name: "ArrowTests",
-            dependencies: ["ArrowCore"]),
-        .binaryTarget(
-            name: "lib_InternalSwiftSyntaxParser",
-            url: "https://github.com/keith/StaticInternalSwiftSyntaxParser/releases/download/5.6/lib_InternalSwiftSyntaxParser.xcframework.zip",
-            checksum: "88d748f76ec45880a8250438bd68e5d6ba716c8042f520998a438db87083ae9d"
-        )
+            dependencies: ["ArrowCore"])
     ]
 )

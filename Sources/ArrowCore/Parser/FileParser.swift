@@ -1,5 +1,5 @@
 import Foundation
-import SwiftSyntaxParser
+//import SwiftSyntaxParser
 import SwiftSyntax
 
 class FileParser: SyntaxVisitor {
@@ -33,7 +33,7 @@ class FileParser: SyntaxVisitor {
             .compactMap { Scope.init(rawValue: $0) }
             .first
         guard let scope else { return .skipChildren }
-        let parser = Parser(module: name, scope: scope, imports: imports)
+        let parser = ArrowParser(viewMode: .all, module: name, scope: scope, imports: imports)
         types.formUnion(parser.parse(node))
         return .visitChildren
     }

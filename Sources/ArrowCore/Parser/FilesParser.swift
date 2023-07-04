@@ -1,6 +1,6 @@
 import Foundation
 import SwiftSyntax
-import SwiftSyntaxParser
+import SwiftParser
 
 extension Array where Element: Hashable {
     func asSet() -> Set<Element> {
@@ -13,8 +13,8 @@ final class FilesParser {
         return try files.flatMap {
             let path = URL(fileURLWithPath: $0)
             let content = try String(contentsOf: path)
-            let tree = try SyntaxParser.parse(source: content)
-            let syntaxVisitor = FileParser()
+            let tree = Parser.parse(source: content)
+            let syntaxVisitor = FileParser(viewMode: .all)
             return syntaxVisitor.parse(tree)
         }.asSet()
     }
