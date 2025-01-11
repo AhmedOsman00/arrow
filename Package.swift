@@ -12,7 +12,7 @@ let package = Package(
         // SPM won't generate .swiftmodule for a target directly used by a product,
         // hence it can't be imported by tests. Executable target can't be imported too.
         .executable(name: "arrow", targets: ["Arrow"]),
-        .library(name: "ArrowCore", targets: ["ArrowCore"])
+//        .library(name: "ArrowCore", targets: ["ArrowCore"])
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
@@ -27,9 +27,9 @@ let package = Package(
         // Targets can depend on other targets in this package, and on products in packages this package depends on.
         .executableTarget(
             name: "Arrow",
-            dependencies: ["ArrowCore"]),
+            dependencies: ["Script"]),
         .target(
-            name: "ArrowCore",
+            name: "Script",
             dependencies: [
                 "PathKit",
                 .product(name: "ConsoleKit", package: "console-kit"),
@@ -38,7 +38,7 @@ let package = Package(
                 "XcodeProj"
             ]),
         .testTarget(
-            name: "ArrowTests",
-            dependencies: ["ArrowCore"])
+            name: "ScriptTests",
+            dependencies: ["Script"])
     ]
 )

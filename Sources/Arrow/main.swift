@@ -1,5 +1,5 @@
 import Foundation
-import ArrowCore
+import Script
 import ConsoleKit
 
 let console: Console = Terminal()

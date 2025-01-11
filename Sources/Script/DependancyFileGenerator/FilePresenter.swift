@@ -2,21 +2,21 @@ import Foundation
 
 class FilePresenter {
     private let types: [Type]
-    
+
     var imports: Set<String> {
-        var imports = types.flatMap(\.imports).asSet()
-        imports.insert("Swinject")
-        return imports
+//        var imports = types.flatMap(\.imports).asSet()
+//        imports.insert("Swinject")
+        return []
     }
-    
+
     var moduleNames: Set<String> {
         types.map(\.module).asSet()
     }
-    
+
     init(types: [Type]) {
         self.types = types
     }
-    
+
     func getObjects() -> [Object] {
         types.map { type in
             Object(module: type.module,
@@ -26,7 +26,7 @@ class FilePresenter {
                    args:  getArgs(type.parameters))
         }
     }
-    
+
     private func getArgs(_ parameters: [Parameter]) -> [Arg] {
         parameters.map {
             Arg(name: $0.name == "_" ? nil : $0.name,

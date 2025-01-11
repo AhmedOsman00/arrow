@@ -11,7 +11,7 @@ final class XCodeParser {
     private var pbxproj: PBXProj {
         project.pbxproj
     }
-    
+
     init(path: Path, source: String, target: String) throws {
         self.path = path
         self.source = source
@@ -27,20 +27,19 @@ final class XCodeParser {
             .compactMap {  try? $0.fullPath(sourceRoot: source) }
             .filter { $0.hasSuffix(".swift") }
     }
-    
-    func addDependenciesFile(projectFile: String) throws {
+
+    func addDependenciesFile() throws {
         guard let main = pbxproj.rootObject?.mainGroup,
               let target = pbxproj.nativeTargets.first(where: { $0.name == target })
         else {
             throw NSError()
         }
-        
+
         guard try !target.sourceFiles().contains(where: { $0.path == Self.fileName }) else {
             return
         }
 
-        let fileRef = try main.addFile(at: Path("\(source)/\(Self.fileName)"),
-                                       sourceRoot: Path(source))
+        let fileRef = try main.addFile(at: Path("\(source)/\(Self.fileName)"), sourceRoot: Path(source))
         let _ = try target.sourcesBuildPhase()?.add(file: fileRef)
         try project.write(path: path)
     }
