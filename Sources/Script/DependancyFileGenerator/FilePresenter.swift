@@ -1,7 +1,7 @@
 import Foundation
 
 class FilePresenter {
-    private let types: [Type]
+    private let types: [DependencyType]
 
     var imports: Set<String> {
 //        var imports = types.flatMap(\.imports).asSet()
@@ -10,21 +10,23 @@ class FilePresenter {
     }
 
     var moduleNames: Set<String> {
-        types.map(\.module).asSet()
+//        types.map(\.module).asSet()
+        []
     }
 
-    init(types: [Type]) {
+    init(types: [DependencyType]) {
         self.types = types
     }
 
     func getObjects() -> [Object] {
-        types.map { type in
-            Object(module: type.module,
-                   name: type.name,
-                   block: type.block,
-                   scope: type.scope.description,
-                   args:  getArgs(type.parameters))
-        }
+//        types.map { type in
+//            Object(module: type.module,
+//                   name: type.name,
+//                   block: type.block,
+//                   scope: type.scope.description,
+//                   args:  getArgs(type.parameters))
+//        }
+        []
     }
 
     private func getArgs(_ parameters: [Parameter]) -> [Arg] {

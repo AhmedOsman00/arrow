@@ -9,9 +9,9 @@ final class Container {
 
     func register<Dependency>(
         _ type: Dependency.Type,
-        _ name: String? = nil,
-        _ objectScope: DependencyScope = .transient,
-        _ factory: @escaping (Container) -> Dependency
+        name: String? = nil,
+        objectScope: DependencyScope = .transient,
+        factory: @escaping (Container) -> Dependency
     ) {
         let name = name ?? "\(type)"
         lock.lock()
@@ -31,7 +31,7 @@ final class Container {
         }
     }
 
-    func resolve<Dependency>(_ type: Dependency.Type, _ name: String? = nil) -> Dependency {
+    func resolve<Dependency>(_ type: Dependency.Type, name: String? = nil) -> Dependency {
         let name = name ?? "\(type)"
 
         if let dependency = dependencies[name] as? Dependency {
@@ -53,4 +53,10 @@ final class Container {
         case singleton
         case transient
     }
+}
+
+extension Container: Registerable {}
+
+@objc protocol Registerable {
+    @objc optional func register()
 }

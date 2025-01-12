@@ -1,60 +1,39 @@
 import Foundation
 
 class DependencyResolver {
-    private let graph: Set<Type>
-    private var weights: [Type: Int]
-    private var types: [Type: String]
-    private var dependants = [String: [Type]]()
-    
-    init(graph: Set<Type>) {
-        self.graph = graph
-        var weights = [Type: Int]()
-        graph.forEach { weights[$0] = $0.dependancies.count }
-        for type in graph {
-            for dep in type.dependancies {
-                if dependants[dep] == nil {
-                    dependants[dep] = [type]
-                } else {
-                    dependants[dep]?.append(type)
-                }
-            }
+    private let data: Set<DependencyModule>
+    private let graph: [String: [String]]
+
+    init(data: Set<DependencyModule>) {
+        var graph = [String: [String]]()
+        let dependencies = data.flatMap(\.types)
+        for dependency in dependencies {
+            graph[dependency.type] = dependency.dependencies
         }
-        var types = [Type: String]()
-        graph.forEach { types[$0] = $0.name }
-        self.types = types
-        self.weights = weights
+        self.graph = graph
+        self.data = data
     }
 
-    func resolve() throws -> [Type] {
-        var zeros = [Type]()
-        var sorted = [Type]()
-        
-        for (type, dependencies) in weights {
-            if dependencies == 0 {
-                zeros.append(type)
-            }
-        }
+    func allDependencyFound() throws -> Bool {
+        let dependencies = data.flatMap(\.types).flatMap(\.dependencies)
+        let missingDependencies = dependencies.filter { graph[$0] == nil }
+        if missingDependencies.isEmpty { return true }
 
-        for _ in 0..<graph.count {
-            guard !zeros.isEmpty else {
-                print("cycle found")
-                throw NSError()
-            }
-            let x = zeros.removeFirst()
-            sorted.append(x)
-            let dependency = types[x]!
-            
-            guard let dependants = dependants[dependency] else {
-                continue
-            }
-            
-            for type in dependants {
-                weights[type]! -= 1
-                if weights[type] == 0 {
-                    zeros.append(type)
-                }
-            }
-        }
-        return sorted
+        throw DependencyError.missingDependencies(missingDependencies)
+    }
+
+    func hasDuplicateDependencies() throws -> Bool {
+        var set = Set<String>()
+        let types = data.flatMap(\.types).map { "\($0.name ?? ""):\($0.type)" }
+        let duplicateDependencies = types.filter { !set.insert($0).inserted }
+        if duplicateDependencies.isEmpty { return false }
+
+        throw DependencyError.duplicateDependencies(duplicateDependencies)
+    }
+    
+    enum DependencyError: Error {
+        case missingDependencies([String])
+        case duplicateDependencies([String])
+        case circularDependency(String, String)
     }
 }
