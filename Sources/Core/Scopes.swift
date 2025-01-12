@@ -1,5 +1,5 @@
 protocol Default {
-    required init
+    init()
 }
 
 protocol TransientScope: Default {}
