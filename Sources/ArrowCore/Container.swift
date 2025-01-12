@@ -1,6 +1,6 @@
 import Foundation
 
-final class Container {
+public final class Container {
     static let shared = Container()
     private var dependencies = [String: Any]()
     private let lock = NSLock()
@@ -57,6 +57,6 @@ final class Container {
 
 extension Container: Registerable {}
 
-@objc protocol Registerable {
+@objc public protocol Registerable {
     @objc optional func register()
 }

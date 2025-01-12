@@ -1,5 +1,5 @@
 @propertyWrapper
-struct Autowire<T> {
+public struct Autowire<T> {
     var name: String?
     // save the value
 
@@ -12,5 +12,5 @@ struct Autowire<T> {
     }
 }
 
-typealias Presenter = Autowire
-typealias ViewModel = Autowire
+public typealias Presenter = Autowire
+public typealias ViewModel = Autowire
