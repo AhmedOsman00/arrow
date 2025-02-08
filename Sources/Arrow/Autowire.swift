@@ -3,11 +3,11 @@ public struct Autowire<T> {
     var name: String?
     // save the value
 
-    var wrappedValue: T? {
+    public var wrappedValue: T? {
         Container.shared.resolve(T.self, name: name)
     }
 
-    init(name: String? = nil) {
+    public init(name: String? = nil) {
         self.name = name
     }
 }

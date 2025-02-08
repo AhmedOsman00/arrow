@@ -1,4 +1,4 @@
-protocol Default {
+public protocol Default {
     init()
 }
 
