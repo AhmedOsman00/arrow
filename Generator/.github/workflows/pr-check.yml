@@ -1,0 +1,35 @@
+name: PR Quality Check
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  quality-check:
+    name: Lint & Test
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set Swift Version
+        run: |
+          SWIFT_VERSION=$(cat .swift-version)
+          sudo xcode-select -switch /Applications/Xcode_$SWIFT_VERSION.app/Contents/Developer
+          swift --version
+
+      - name: Install Swift Dependencies
+        run: |
+          brew install swiftlint swiftformat
+          swift --version
+
+      - name: Run Linter
+        run: make lint
+
+      - name: Run Formatter
+        run: make format
+
+      - name: Run Tests
+        run: make test
