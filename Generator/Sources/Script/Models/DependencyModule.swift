@@ -5,19 +5,23 @@ struct DependencyModule: Hashable, Equatable, CustomStringConvertible {
     let imports: Set<String>
     let name: String
     let scope: Scope
-    let types: Set<DependencyType>
+    let types: Set<Dependency>
 
     var description: String {
-        return "\(name)"
+        """
+        "\(name).\(type) in \(scope) imports \(imports) with members {
+        \t\(types.map(\.description).joined(separator: "\n\t"))
+        }
+        """
     }
 
-    enum ModuleType {
+    enum ModuleType: String, CaseIterable {
         case `class`
         case `struct`
         case `extension`
     }
 
-    enum Scope: String, Codable {
+    enum Scope: String, Codable, CaseIterable {
         case singleton = "SingletonScope"
         case transient = "TransientScope"
 

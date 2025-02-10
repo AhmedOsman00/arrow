@@ -1,7 +1,7 @@
 import Foundation
 import SwiftSyntax
 
-class ModuleParser: SyntaxVisitor {
+final class ModuleParser: SyntaxVisitor {
     var imports = Set<String>()
     var modules = Set<DependencyModule>()
     
@@ -11,8 +11,8 @@ class ModuleParser: SyntaxVisitor {
     }
     
     override func visit(_ node: ExtensionDeclSyntax) -> SyntaxVisitorContinueKind {
-        dump(node)
-        return createModule(.extension, node, node.inheritanceClause, "node.identifier.text")
+        let identifier = node.extendedType.withoutTrivia().description
+        return createModule(.extension, node, node.inheritanceClause, identifier)
     }
     
     override func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
@@ -20,7 +20,6 @@ class ModuleParser: SyntaxVisitor {
     }
     
     override func visit(_ node: StructDeclSyntax) -> SyntaxVisitorContinueKind {
-        print(node.identifier.text)
         return createModule(.struct, node, node.inheritanceClause, node.identifier.text)
     }
     
@@ -34,7 +33,7 @@ class ModuleParser: SyntaxVisitor {
             .compactMap { DependencyModule.Scope.init(rawValue: $0) }
             .first
         guard let scope else { return .skipChildren }
-        let types = TypeParser(viewMode: .all).parse(node)
+        let types = MembersParser(viewMode: .all).parse(node)
         let module = DependencyModule(type: type, imports: imports, name: name, scope: scope, types: types)
         modules.insert(module)
         return .visitChildren
