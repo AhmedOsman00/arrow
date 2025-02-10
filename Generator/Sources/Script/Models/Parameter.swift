@@ -5,8 +5,8 @@ struct Parameter: Hashable, Codable, CustomStringConvertible {
     let value: String?
 
     var description: String {
-        return """
-            \(name ?? ""): \(value ?? "resolver.resolved")
-            """
+        """
+        \(name ?? ""): \(value ?? "resolver.resolved")
+        """
     }
 }

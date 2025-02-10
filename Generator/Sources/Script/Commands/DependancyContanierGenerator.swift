@@ -25,7 +25,7 @@ public final class DependancyContanierGenerator: Command {
 
     public func run(using context: CommandContext, signature: Signature) throws {
         let target = ProcessInfo.processInfo.environment["TARGET_NAME"] ?? ""
-        let projectRootPath = ProcessInfo.processInfo.environment["PROJECT_DIR"] ?? ""
+        let projectRootPath = ProcessInfo.processInfo.environment["PROJECT_FILE_PATH"] ?? ""
         let path = Path(projectRootPath)
         let source = path.components.dropLast().joined(separator: "/")
         let xcodeParser = try XCodeParser(path: path,

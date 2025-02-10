@@ -1,7 +1,7 @@
 import Foundation
 
 class FilePresenter {
-    private let types: [DependencyType]
+    private let types: [Dependency]
 
     var imports: Set<String> {
 //        var imports = types.flatMap(\.imports).asSet()
@@ -14,7 +14,7 @@ class FilePresenter {
         []
     }
 
-    init(types: [DependencyType]) {
+    init(types: [Dependency]) {
         self.types = types
     }
 
