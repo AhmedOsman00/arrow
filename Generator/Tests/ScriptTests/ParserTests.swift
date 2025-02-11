@@ -13,8 +13,7 @@ final class ParserTests: XCTestCase {
                       name: "Delegate",
                       type: "Delegate",
                       block: "delegate",
-                      parameters: [],
-                      dependencies: []),
+                      parameters: []),
             ])
             
             //given
@@ -40,8 +39,7 @@ final class ParserTests: XCTestCase {
                       name: "Delegate",
                       type: "Delegate",
                       block: "delegate",
-                      parameters: [],
-                      dependencies: []),
+                      parameters: []),
             ])
             
             //given
@@ -81,8 +79,7 @@ final class ParserTests: XCTestCase {
                   name: "Delegate",
                   type: "Delegate",
                   block: "delegate",
-                  parameters: [],
-                  dependencies: []),
+                  parameters: []),
         ])
         
         //given
@@ -106,8 +103,7 @@ final class ParserTests: XCTestCase {
                   name: nil,
                   type: "Service",
                   block: "provideService",
-                  parameters: [],
-                  dependencies: [])
+                  parameters: [])
         ])
         
         //given
@@ -131,8 +127,7 @@ final class ParserTests: XCTestCase {
                   name: nil,
                   type: "ViewModel",
                   block: "provideViewModel",
-                  parameters: [.init(name: "_", value: nil)],
-                  dependencies: ["Delegate"])
+                  parameters: [.init(type: "Delegate", name: "_", value: nil)]),
         ])
         
         //given
@@ -156,8 +151,8 @@ final class ParserTests: XCTestCase {
                   name: nil,
                   type: "ViewModel",
                   block: "provideViewModel",
-                  parameters: [.init(name: "_", value: nil), .init(name: "_", value: nil)],
-                  dependencies: ["Delegate", "Factory"])
+                  parameters: [.init(type: "Delegate", name: "_", value: nil),
+                               .init(type: "Factory", name: "_", value: nil)]),
         ])
         
         //given
@@ -181,8 +176,7 @@ final class ParserTests: XCTestCase {
                   name: nil,
                   type: "Factory",
                   block: "provideFactory",
-                  parameters: [.init(name: "delegate", value: "Delegate()")],
-                  dependencies: [])
+                  parameters: [.init(type: "Delegate", name: "delegate", value: "Delegate()")]),
         ])
         
         //given
@@ -206,8 +200,7 @@ final class ParserTests: XCTestCase {
                   name: nil,
                   type: "ExtraModel",
                   block: "provideModel",
-                  parameters: [.init(name: "delegate", value: nil)],
-                  dependencies: ["Delegate"])
+                  parameters: [.init(type: "Delegate", name: "delegate", value: nil)]),
         ])
         
         //given
@@ -231,8 +224,7 @@ final class ParserTests: XCTestCase {
                   name: "AnotherExtraModel",
                   type: "ExtraModel",
                   block: "provideExtraModel",
-                  parameters: [.init(name: "delegate", value: nil)],
-                  dependencies: ["Delegate"])
+                  parameters: [.init(type: "Delegate", name: "delegate", value: nil)]),
         ])
         
         //given
@@ -257,8 +249,7 @@ final class ParserTests: XCTestCase {
                   name: "AnotherExtraModel",
                   type: "ExtraModel",
                   block: "provideExtraModel",
-                  parameters: [.init(name: "delegate", value: nil)],
-                  dependencies: ["Delegate"])
+                  parameters: [.init(type: "Delegate", name: "delegate", value: nil)]),
         ])
         
         //given
@@ -287,8 +278,7 @@ final class ParserTests: XCTestCase {
                   name: nil,
                   type: "(ExtraModel, String)",
                   block: "provideExtraModel",
-                  parameters: [.init(name: "delegate", value: nil)],
-                  dependencies: ["Delegate"])
+                  parameters: [.init(type: "Delegate", name: "delegate", value: nil)]),
         ])
         
         //given
@@ -331,6 +321,7 @@ final class ParserTests: XCTestCase {
         //given
         let content = createContent("""
             let delegate = Delegate()
+            let service: Service = Service()
             var factory = Factory()
         """)
         

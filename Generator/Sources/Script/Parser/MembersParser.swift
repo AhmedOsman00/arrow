@@ -15,6 +15,7 @@ final class MembersParser: SyntaxVisitor {
     
     override func visit(_ node: VariableDeclSyntax) -> SyntaxVisitorContinueKind {
         guard let binding = node.bindings.first,
+              !node.bindings.contains(where: { $0.initializer != nil }),
               let type = binding.typeAnnotation?.type.withoutTrivia().description
         else { return .skipChildren }
         let name = binding.pattern.withoutTrivia().description
@@ -22,8 +23,7 @@ final class MembersParser: SyntaxVisitor {
                                         name: type,
                                         type: type,
                                         block: name,
-                                        parameters: [],
-                                        dependencies: [])
+                                        parameters: [])
         dependencies.insert(dependencyType)
         return super.visit(node)
     }
@@ -38,23 +38,18 @@ final class MembersParser: SyntaxVisitor {
             .segments
             .description
 
-        let type = returnType.withoutTrivia().description
-        let dependancies: [String] = node.signature.input.parameterList.compactMap {
-            guard $0.defaultArgument == nil else { return nil }
-            return $0.type?.withoutTrivia().description
-        }
-        
-        let parameters = node.signature.input.parameterList.map {
-            return Parameter(name: $0.firstName?.withoutTrivia().description,
-                             value: $0.defaultArgument?.value.withoutTrivia().description)
+        let parameters: [DependencyParameter] = node.signature.input.parameterList.compactMap {
+            guard let type = $0.type?.withoutTrivia().description else { return nil }
+            return DependencyParameter(type: type,
+                                       name: $0.firstName?.withoutTrivia().description,
+                                       value: $0.defaultArgument?.value.withoutTrivia().description)
         }
         
         let dependencyType = Dependency(dependencyType: .method,
                                         name: name,
-                                        type: type,
+                                        type: returnType.withoutTrivia().description,
                                         block: node.identifier.text,
-                                        parameters: parameters,
-                                        dependencies: dependancies)
+                                        parameters: parameters)
         dependencies.insert(dependencyType)
         return super.visit(node)
     }

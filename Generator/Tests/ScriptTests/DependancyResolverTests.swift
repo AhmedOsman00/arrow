@@ -100,13 +100,11 @@ private extension DependencyResolverTests {
     func createDependency(type: String,
                           dependencies: [String],
                           name: String? = nil,
-                          block: String = "block",
-                          parameters: [Parameter] = []) -> Dependency {
+                          block: String = "block") -> Dependency {
         return Dependency(dependencyType: .method,
                           name: name,
                           type: type,
                           block: block,
-                          parameters: parameters,
-                          dependencies: dependencies)
+                          parameters: dependencies.map { .init(type: $0, name: nil, value: nil) })
     }
 }
