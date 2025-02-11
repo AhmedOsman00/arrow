@@ -29,7 +29,7 @@ class FilePresenter {
         []
     }
 
-    private func getArgs(_ parameters: [Parameter]) -> [Arg] {
+    private func getArgs(_ parameters: [DependencyParameter]) -> [Arg] {
         parameters.map {
             Arg(name: $0.name == "_" ? nil : $0.name,
                 value: $0.value,

@@ -6,11 +6,14 @@ struct Dependency: Hashable, Equatable, CustomStringConvertible {
     let name: String?
     let type: String
     let block: String
-    let parameters: [Parameter]
-    var dependencies: [String]
+    let parameters: [DependencyParameter]
 
     var id: String {
         "\(name ?? "_"):\(type)"
+    }
+    
+    var dependencies: [String] {
+        parameters.filter { $0.value == nil }.map(\.type)
     }
 
     var description: String {
