@@ -35,14 +35,11 @@ class DependencyFile {
      }
      */
     lazy var file = SourceFileSyntax(statements: .init(createStatements()),
-                                     eofToken: .eof())
+                                     endOfFileToken: .endOfFileToken())
     
     private func createStatements() -> [CodeBlockItemListSyntax.Element] {
         var statements = presenter.imports.map(importDecl).map {
-            CodeBlockItemSyntax(
-                item: .init($0),
-                semicolon: nil,
-                errorTokens: nil)
+            CodeBlockItemSyntax(item: .init($0), semicolon: nil)
         }
         statements.append(CodeBlockItemSyntax(item: .decl(extensionDecl.asDecl())))
         return statements
@@ -52,12 +49,8 @@ class DependencyFile {
      import ...
      */
     private func importDecl(_ moduleName: String) -> ImportDeclSyntax {
-        ImportDeclSyntax(
-            importTok: .importKeyword(trailingTrivia: .space),
-            path: .init([
-                .init(name: .unknown(moduleName,
-                                     trailingTrivia: .newline))
-            ]))
+        ImportDeclSyntax(importKeyword: .keyword(.import, trailingTrivia: .space),
+                         path: .init([.init(name: .unknown(moduleName, trailingTrivia: .newline))]))
     }
     
     /*
@@ -73,15 +66,13 @@ class DependencyFile {
      }
      */
     private lazy var extensionDecl = ExtensionDeclSyntax(
-        extensionKeyword: .extensionKeyword(leadingTrivia: .newline,
-                                            trailingTrivia: .space),
-        extendedType: SimpleTypeIdentifierSyntax(name: TokenSyntax.identifier("Container"),
-                                                 trailingTrivia: .space),
-        members: MemberDeclBlockSyntax(
-            leftBrace: .leftBraceToken(trailingTrivia: .newlines(2)),
-            members: .init([MemberDeclListItemSyntax(decl: registerFuncDecl,
-                                                     semicolon: nil)]),
-            rightBrace: rightBrace))
+        extensionKeyword: .keyword(.extension, leadingTrivia: .newline, trailingTrivia: .space),
+        extendedType: IdentifierTypeSyntax(name: TokenSyntax.identifier("Container"),
+                                           trailingTrivia: .space),
+        memberBlock: MemberBlockSyntax(leftBrace: leftBrace,
+                                       members: .init([MemberBlockItemSyntax(decl: registerFuncDecl)]),
+                                       rightBrace: rightBrace)
+    )
 
     /*
      func resgister() {
@@ -94,16 +85,17 @@ class DependencyFile {
      */
     private lazy var registerFuncDecl = FunctionDeclSyntax(
         leadingTrivia: firstIntend,
-        funcKeyword: .funcKeyword(trailingTrivia: .space),
-        identifier: .identifier("register"),
-        signature: FunctionSignatureSyntax(input: ParameterClauseSyntax(
-                                           leftParen: leftParen,
-                                           parameterList: .init([]),
-                                           rightParen: .rightParenToken(trailingTrivia: .space))),
+        funcKeyword: .keyword(.func, trailingTrivia: .space),
+        name: .identifier("register"),
+        signature: FunctionSignatureSyntax(
+            parameterClause: FunctionParameterClauseSyntax(leftParen: leftParen,
+                                                           parameters: [],
+                                                           rightParen: .rightParenToken(trailingTrivia: .space))
+        ),
         body: CodeBlockSyntax(leftBrace: leftBrace,
                               statements: CodeBlockItemListSyntax(presenter.moduleNames.map(map) +
                                                                   presenter.objects.map(map)),
-                              rightBrace: rightBrace.withLeadingTrivia(.newline + firstIntend))
+                              rightBrace: rightBrace.with(\.leadingTrivia, .newline + firstIntend))
     )
 
     /*
@@ -111,25 +103,20 @@ class DependencyFile {
      */
     private func map(_ module: String) -> CodeBlockItemSyntax {
         let identifier = IdentifierPatternSyntax(identifier: .identifier(module.lowercased(), trailingTrivia: .space))
-        let calledExpression = IdentifierExprSyntax(identifier: .identifier(module))
+        let calledExpression = DeclReferenceExprSyntax(baseName: .identifier(module))
         let value = FunctionCallExprSyntax(calledExpression: calledExpression,
                                            leftParen: leftParen,
-                                           argumentList: .init([]),
+                                           arguments: [],
                                            rightParen: rightParen)
 
-        let initializer = InitializerClauseSyntax(
-            equal: .equalToken(trailingTrivia: .space),
-            value: value)
-
-        let pattern = PatternBindingSyntax(pattern: identifier,
-                                           initializer: initializer)
+        let initializer = InitializerClauseSyntax(equal: .equalToken(trailingTrivia: .space), value: value)
+        let pattern = PatternBindingSyntax(pattern: identifier, initializer: initializer)
         let varibale = VariableDeclSyntax(
-            letOrVarKeyword: TokenSyntax.letKeyword(
-                leadingTrivia: secondIntend,
-                trailingTrivia: .space),
-            bindings: .init([pattern]))
+            bindingSpecifier: .keyword(.let, leadingTrivia: secondIntend, trailingTrivia: .space),
+            bindings: .init([pattern])
+        )
         
-        return CodeBlockItemSyntax(item: .decl(varibale.asDecl()))
+        return .init(item: .decl(varibale.asDecl()))
     }
 
     /*
@@ -141,23 +128,21 @@ class DependencyFile {
         let function = FunctionCallExprSyntax(leadingTrivia: .newlines(2) + secondIntend,
                                               calledExpression: createResgisterCall(),
                                               leftParen: leftParen,
-                                              argumentList: .init([createTypeArgument(object.name),
-                                                                   createNameArgument(object.name),
-                                                                   createScopeArgument(object.scope)]),
+                                              arguments: .init([createTypeArgument(object.name),
+                                                                createNameArgument(object.name),
+                                                                createScopeArgument(object.scope)]),
                                               rightParen: rightParen,
                                               trailingClosure: createClosure(object))
 
-        return CodeBlockItemSyntax(item: .expr(function.asExpr()))
+        return .init(item: .expr(function.asExpr()))
     }
 
     /*
      resolver
      */
-    private func createResolver() -> ClosureParamListSyntax {
-        ClosureParamListSyntax([
-            ClosureParamSyntax(
-            name: .identifier("resolver"),
-            trailingComma: nil)
+    private func createResolver() -> ClosureShorthandParameterListSyntax {
+        .init([
+            .init(name: .identifier("resolver"), trailingComma: nil)
         ])
     }
     
@@ -168,10 +153,9 @@ class DependencyFile {
         let item = FunctionCallExprSyntax(calledExpression: createModuleFuncCall(module: object.module,
                                                                                  block: object.block).asExpr(),
                                           leftParen: leftParen,
-                                          argumentList: TupleExprElementListSyntax(object.args.map(map)),
+                                          arguments: LabeledExprListSyntax(object.args.map(map)),
                                           rightParen: rightParen,
-                                          trailingClosure: nil,
-                                          additionalTrailingClosures: nil)
+                                          trailingClosure: nil)
         return [CodeBlockItemSyntax(leadingTrivia: thirdIntend, item: .expr(item.asExpr()))]
     }
     
@@ -179,23 +163,20 @@ class DependencyFile {
      container.provide
      */
     private func createModuleFuncCall(module: String, block: String) -> MemberAccessExprSyntax {
-        let base = IdentifierExprSyntax(
-            identifier: .identifier(module.lowercased()),
-            declNameArguments: nil)
+        let base = DeclReferenceExprSyntax(baseName: .identifier(module.lowercased()))
         return MemberAccessExprSyntax(base: base,
-                               dot: dot,
-                               name: .identifier(block))
+                                      period: dot,
+                                      name: .identifier(block))
     }
     
     /*
      resolver.resolved(), a: resolver.resolved(), b: B()
      */
-    private func map(_ arg: Arg) -> TupleExprElementSyntax {
-        TupleExprElementSyntax(
-            label: TokenSyntax.identifier(arg.name ?? ""),
-            colon: arg.name == nil ? nil : colon,
-            expression: createResolvedCall(arg.value),
-            trailingComma: arg.comma ? comma : nil)
+    private func map(_ arg: Arg) -> LabeledExprSyntax {
+        .init(label: .identifier(arg.name ?? ""),
+              colon: arg.name == nil ? nil : colon,
+              expression: createResolvedCall(arg.value),
+              trailingComma: arg.comma ? comma : nil)
     }
     
     /*
@@ -204,91 +185,56 @@ class DependencyFile {
      }
      */
     private func createClosure(_ object: Object) -> ClosureExprSyntax {
-        ClosureExprSyntax(
-            leftBrace: .leftBraceToken(leadingTrivia: .space, trailingTrivia: .space),
-            signature: ClosureSignatureSyntax(
-                attributes: nil,
-                capture: nil,
-                input: .simpleInput(createResolver()),
-                asyncKeyword: nil,
-                throwsTok: nil,
-                output: nil,
-                inTok: .inKeyword(leadingTrivia: .space, trailingTrivia: .newline)),
-            statements: CodeBlockItemListSyntax(createStatements(object)),
-            rightBrace: rightBrace.withLeadingTrivia(.newline + secondIntend))
+        .init(leftBrace: .leftBraceToken(leadingTrivia: .space, trailingTrivia: .space),
+              signature: .init(parameterClause: .simpleInput(createResolver()),
+                                                inKeyword: .keyword(.in, leadingTrivia: .space, trailingTrivia: .newline)),
+              statements: .init(createStatements(object)),
+              rightBrace: rightBrace.with(\.leadingTrivia, .newline + secondIntend))
     }
     
     // name: "Type"
-    private func createNameArgument(_ type: String) -> TupleExprElementSyntax {
-        TupleExprElementSyntax(
-            label: .identifier("name"),
-            colon: colon,
-            expression: ExprSyntax(SyntaxFactory.makeStringLiteralExpr(type)),
-            trailingComma: comma)
+    private func createNameArgument(_ type: String) -> LabeledExprSyntax {
+        .init(label: .identifier("name"),
+              colon: colon,
+              expression: StringLiteralExprSyntax(openingQuote: .stringQuoteToken(),
+                                                  segments: [.stringSegment(.init(content: .stringSegment(type)))],
+                                                  closingQuote: .stringQuoteToken()),
+              trailingComma: comma)
     }
     
     // objectScope: .transient
-    private func createScopeArgument(_ scope: String) -> TupleExprElementSyntax {
-        let dotScope = MemberAccessExprSyntax(
-            base: nil,
-            dot: dot,
-            name: .identifier(scope),
-            declNameArguments: nil)
-        
-        return TupleExprElementSyntax(label: .identifier("objectScope"),
-                                      colon: colon,
-                                      expression: dotScope,
-                                      trailingComma: nil)
+    private func createScopeArgument(_ scope: String) -> LabeledExprSyntax {
+        .init(label: .identifier("objectScope"),
+              colon: colon,
+              expression: MemberAccessExprSyntax(declName: .init(baseName: .identifier(scope))))
     }
     
     // Type.self
-    private func createTypeArgument(_ type: String) -> TupleExprElementSyntax {
-        TupleExprElementSyntax(
-            label: nil,
-            colon: nil,
-            expression: MemberAccessExprSyntax(
-                base: IdentifierExprSyntax(
-                    identifier: TokenSyntax.identifier(type),
-                    declNameArguments: nil),
-                dot: dot,
-                name: TokenSyntax.selfKeyword(),
-                declNameArguments: nil),
-            trailingComma: comma)
+    private func createTypeArgument(_ type: String) -> LabeledExprSyntax {
+        .init(expression: MemberAccessExprSyntax(base: DeclReferenceExprSyntax(baseName: .identifier(type)),
+                                                 declName: .init(baseName: .keyword(.self))),
+              trailingComma: comma)
     }
     
     // self.register
     private func createResgisterCall() -> MemberAccessExprSyntax {
-        MemberAccessExprSyntax(
-            base: IdentifierExprSyntax(identifier: .selfKeyword(),
-                                       declNameArguments: nil).asExpr(),
-            dot: dot,
-            name: .identifier("register"),
-            declNameArguments: nil)
+        .init(base: DeclReferenceExprSyntax(baseName: .keyword(.self)),
+              declName: .init(baseName: .identifier("register")))
     }
     
     // resolver.resolved()
     private func createResolvedCall(_ value: String?) -> ExprSyntax {
         guard let value else {
-            let resolver = IdentifierExprSyntax(identifier: .identifier("resolver"))
+            let resolved = MemberAccessExprSyntax(base: DeclReferenceExprSyntax(baseName: .identifier("resolver")),
+                                                  declName: .init(baseName: .identifier("resolved")))
             
-            let resolved = MemberAccessExprSyntax(
-                base: resolver,
-                dot: dot,
-                name: .identifier("resolved"),
-                declNameArguments: nil)
-            
-            return FunctionCallExprSyntax(
-                calledExpression: resolved,
-                leftParen: leftParen,
-                argumentList: TupleExprElementListSyntax([]),
-                rightParen: rightParen,
-                trailingClosure: nil,
-                additionalTrailingClosures: nil).asExpr()
+            return FunctionCallExprSyntax(calledExpression: resolved,
+                                          leftParen: leftParen,
+                                          arguments: [],
+                                          rightParen: rightParen).asExpr()
         }
             
-        return IdentifierExprSyntax(
-            identifier: .identifier(value),
-            declNameArguments: nil).asExpr()
+        return DeclReferenceExprSyntax(baseName: .identifier(value)).asExpr()
     }
 }
 
@@ -307,11 +253,5 @@ extension VariableDeclSyntax {
 extension ExtensionDeclSyntax {
     func asDecl() -> DeclSyntax {
         DeclSyntax(self)
-    }
-}
-
-extension PatternSyntaxProtocol {
-    func asPattern() -> PatternSyntax {
-        PatternSyntax(self)
     }
 }

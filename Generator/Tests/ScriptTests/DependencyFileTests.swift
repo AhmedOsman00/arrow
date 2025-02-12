@@ -8,7 +8,6 @@ class DependencyFileTests: XCTestCase {
 import Arrow
 
 extension Container {
-
     func register() {
         let module = Module()
 

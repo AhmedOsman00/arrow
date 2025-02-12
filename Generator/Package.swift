@@ -16,7 +16,7 @@ let package = Package(
     dependencies: [
         // Dependencies declare other packages that this package depends on.
         .package(url: "https://github.com/vapor/console-kit.git", from: "4.5.0"),
-        .package(url: "https://github.com/apple/swift-syntax.git", .exact("508.0.0")),
+        .package(url: "https://github.com/apple/swift-syntax.git", .exact("600.0.1")),
         // PathKit needs to be exact to avoid a SwiftPM bug where dependency resolution takes a very long time.
         .package(url: "https://github.com/kylef/PathKit.git", .exact("1.0.1")),
         .package(url: "https://github.com/tuist/XcodeProj.git", .upToNextMajor(from: "8.8.0"))
