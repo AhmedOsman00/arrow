@@ -8,6 +8,9 @@ class DependencyFile {
         self.presenter = presenter
     }
     
+    private let firstIntend = Trivia.spaces(4)
+    private let secondIntend = Trivia.spaces(8)
+    private let thirdIntend = Trivia.spaces(12)
     private let colon = TokenSyntax.colonToken(trailingTrivia: .spaces(1))
     private let leftBrace = TokenSyntax.leftBraceToken(trailingTrivia: .newlines(1))
     private let rightBrace = TokenSyntax.rightBraceToken(leadingTrivia: .newlines(1))
@@ -50,10 +53,10 @@ class DependencyFile {
      */
     private func importDecl(_ moduleName: String) -> ImportDeclSyntax {
         ImportDeclSyntax(
-            importTok: .importKeyword(trailingTrivia: .spaces(1)),
+            importTok: .importKeyword(trailingTrivia: .space),
             path: .init([
                 .init(name: .unknown(moduleName,
-                                     trailingTrivia: .newlines(1)))
+                                     trailingTrivia: .newline))
             ]))
     }
     
@@ -70,10 +73,10 @@ class DependencyFile {
      }
      */
     private lazy var extensionDecl = ExtensionDeclSyntax(
-        extensionKeyword: .extensionKeyword(leadingTrivia: .newlines(1),
-                                            trailingTrivia: .spaces(1)),
+        extensionKeyword: .extensionKeyword(leadingTrivia: .newline,
+                                            trailingTrivia: .space),
         extendedType: SimpleTypeIdentifierSyntax(name: TokenSyntax.identifier("Container"),
-                                                 trailingTrivia: .spaces(1)),
+                                                 trailingTrivia: .space),
         members: MemberDeclBlockSyntax(
             leftBrace: .leftBraceToken(trailingTrivia: .newlines(2)),
             members: .init([MemberDeclListItemSyntax(decl: registerFuncDecl,
@@ -90,41 +93,40 @@ class DependencyFile {
      }
      */
     private lazy var registerFuncDecl = FunctionDeclSyntax(
-        leadingTrivia: .spaces(4),
-        funcKeyword: .funcKeyword(trailingTrivia: .spaces(1)),
+        leadingTrivia: firstIntend,
+        funcKeyword: .funcKeyword(trailingTrivia: .space),
         identifier: .identifier("register"),
         signature: FunctionSignatureSyntax(input: ParameterClauseSyntax(
                                            leftParen: leftParen,
                                            parameterList: .init([]),
-                                           rightParen: .rightParenToken(trailingTrivia: .spaces(1)))),
+                                           rightParen: .rightParenToken(trailingTrivia: .space))),
         body: CodeBlockSyntax(leftBrace: leftBrace,
                               statements: CodeBlockItemListSyntax(presenter.moduleNames.map(map) +
                                                                   presenter.objects.map(map)),
-                              rightBrace: rightBrace.withLeadingTrivia(.newlines(1) + .spaces(4)))
+                              rightBrace: rightBrace.withLeadingTrivia(.newline + firstIntend))
     )
 
     /*
      let module = Module()
      */
     private func map(_ module: String) -> CodeBlockItemSyntax {
-        let identifier = IdentifierPatternSyntax(identifier: .identifier(module.lowercased(), trailingTrivia: .spaces(1)))
+        let identifier = IdentifierPatternSyntax(identifier: .identifier(module.lowercased(), trailingTrivia: .space))
         let calledExpression = IdentifierExprSyntax(identifier: .identifier(module))
-        let value = FunctionCallExprSyntax(
-            calledExpression: calledExpression,
-            leftParen: leftParen,
-            argumentList: .init([]),
-            rightParen: rightParen)
+        let value = FunctionCallExprSyntax(calledExpression: calledExpression,
+                                           leftParen: leftParen,
+                                           argumentList: .init([]),
+                                           rightParen: rightParen)
 
         let initializer = InitializerClauseSyntax(
-            equal: .equalToken(trailingTrivia: .spaces(1)),
+            equal: .equalToken(trailingTrivia: .space),
             value: value)
 
         let pattern = PatternBindingSyntax(pattern: identifier,
                                            initializer: initializer)
         let varibale = VariableDeclSyntax(
             letOrVarKeyword: TokenSyntax.letKeyword(
-                leadingTrivia: .spaces(8),
-                trailingTrivia: .spaces(1)),
+                leadingTrivia: secondIntend,
+                trailingTrivia: .space),
             bindings: .init([pattern]))
         
         return CodeBlockItemSyntax(item: .decl(varibale.asDecl()))
@@ -136,7 +138,7 @@ class DependencyFile {
      }
      */
     private func map(_ object: Object) -> CodeBlockItemSyntax {
-        let function = FunctionCallExprSyntax(leadingTrivia: .newlines(2) + .spaces(8),
+        let function = FunctionCallExprSyntax(leadingTrivia: .newlines(2) + secondIntend,
                                               calledExpression: createResgisterCall(),
                                               leftParen: leftParen,
                                               argumentList: .init([createTypeArgument(object.name),
@@ -170,7 +172,7 @@ class DependencyFile {
                                           rightParen: rightParen,
                                           trailingClosure: nil,
                                           additionalTrailingClosures: nil)
-        return [CodeBlockItemSyntax(leadingTrivia: .spaces(12), item: .expr(item.asExpr()))]
+        return [CodeBlockItemSyntax(leadingTrivia: thirdIntend, item: .expr(item.asExpr()))]
     }
     
     /*
@@ -211,15 +213,15 @@ class DependencyFile {
                 asyncKeyword: nil,
                 throwsTok: nil,
                 output: nil,
-                inTok: .inKeyword(leadingTrivia: .spaces(1), trailingTrivia: .newlines(1))),
+                inTok: .inKeyword(leadingTrivia: .space, trailingTrivia: .newline)),
             statements: CodeBlockItemListSyntax(createStatements(object)),
-            rightBrace: rightBrace.withLeadingTrivia(.newlines(1) + .spaces(8)))
+            rightBrace: rightBrace.withLeadingTrivia(.newline + secondIntend))
     }
     
     // name: "Type"
     private func createNameArgument(_ type: String) -> TupleExprElementSyntax {
         TupleExprElementSyntax(
-            label: TokenSyntax.identifier("name"),
+            label: .identifier("name"),
             colon: colon,
             expression: ExprSyntax(SyntaxFactory.makeStringLiteralExpr(type)),
             trailingComma: comma)
@@ -233,7 +235,7 @@ class DependencyFile {
             name: .identifier(scope),
             declNameArguments: nil)
         
-        return TupleExprElementSyntax(label: TokenSyntax.identifier("objectScope"),
+        return TupleExprElementSyntax(label: .identifier("objectScope"),
                                       colon: colon,
                                       expression: dotScope,
                                       trailingComma: nil)
@@ -267,7 +269,7 @@ class DependencyFile {
     // resolver.resolved()
     private func createResolvedCall(_ value: String?) -> ExprSyntax {
         guard let value else {
-            let resolver = IdentifierExprSyntax(identifier: TokenSyntax.identifier("resolver"))
+            let resolver = IdentifierExprSyntax(identifier: .identifier("resolver"))
             
             let resolved = MemberAccessExprSyntax(
                 base: resolver,
@@ -285,7 +287,7 @@ class DependencyFile {
         }
             
         return IdentifierExprSyntax(
-            identifier: TokenSyntax.identifier(value),
+            identifier: .identifier(value),
             declNameArguments: nil).asExpr()
     }
 }
