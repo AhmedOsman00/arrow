@@ -1,7 +1,14 @@
 import Foundation
 
-class FilePresenter {
-    private let types: [Dependency]
+protocol DependencyFilePresenting {
+    var imports: Set<String> { get }
+    var moduleNames: Set<String> { get }
+    var objects: [Object] { get }
+}
+
+class DependencyFilePresenter: DependencyFilePresenting {
+    private let data: [DependencyModule]
+    private let dependenciesOrder: [String]
 
     var imports: Set<String> {
 //        var imports = types.flatMap(\.imports).asSet()
@@ -14,11 +21,12 @@ class FilePresenter {
         []
     }
 
-    init(types: [Dependency]) {
-        self.types = types
+    init(data: [DependencyModule], dependenciesOrder: [String]) {
+        self.data = data
+        self.dependenciesOrder = dependenciesOrder
     }
 
-    func getObjects() -> [Object] {
+    var objects: [Object] {
 //        types.map { type in
 //            Object(module: type.module,
 //                   name: type.name,

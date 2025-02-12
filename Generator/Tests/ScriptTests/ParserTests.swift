@@ -8,7 +8,7 @@ final class ParserTests: XCTestCase {
     func testParsing_allTypes() {
         for type in DependencyModule.ModuleType.allCases {
             //expected
-            let expectedModules = createExpectedModule(type: type, types: [
+            let expectedModules: Set<DependencyModule> = .fixture(type: type, types: [
                 .init(dependencyType: .variable,
                       name: "Delegate",
                       type: "Delegate",
@@ -34,7 +34,7 @@ final class ParserTests: XCTestCase {
     func testParsing_allScopes() {
         for scope in DependencyModule.Scope.allCases {
             //expected
-            let expectedModules = createExpectedModule(scope: scope, types: [
+            let expectedModules: Set<DependencyModule> = .fixture(scope: scope, types: [
                 .init(dependencyType: .variable,
                       name: "Delegate",
                       type: "Delegate",
@@ -74,7 +74,7 @@ final class ParserTests: XCTestCase {
     
     func testParsingVariables() {
         //expected
-        let expectedModules = createExpectedModule(types: [
+        let expectedModules: Set<DependencyModule> = .fixture(types: [
             .init(dependencyType: .variable,
                   name: "Delegate",
                   type: "Delegate",
@@ -98,7 +98,7 @@ final class ParserTests: XCTestCase {
     
     func testParsingMethod_withoutParameters() {
         //expected
-        let expectedModules = createExpectedModule(types: [
+        let expectedModules: Set<DependencyModule> = .fixture(types: [
             .init(dependencyType: .method,
                   name: nil,
                   type: "Service",
@@ -122,7 +122,7 @@ final class ParserTests: XCTestCase {
     
     func testParsingMethod_oneParameterWithoutName_dependecy() {
         //expected
-        let expectedModules = createExpectedModule(types: [
+        let expectedModules: Set<DependencyModule> = .fixture(types: [
             .init(dependencyType: .method,
                   name: nil,
                   type: "ViewModel",
@@ -146,7 +146,7 @@ final class ParserTests: XCTestCase {
     
     func testParsingMethod_parametersWithoutNames_depedency() {
         //expected
-        let expectedModules = createExpectedModule(types: [
+        let expectedModules: Set<DependencyModule> = .fixture(types: [
             .init(dependencyType: .method,
                   name: nil,
                   type: "ViewModel",
@@ -171,7 +171,7 @@ final class ParserTests: XCTestCase {
     
     func testParsingMethod_oneParameters_defaultValue_noDepedency() {
         //expected
-        let expectedModules = createExpectedModule(types: [
+        let expectedModules: Set<DependencyModule> = .fixture(types: [
             .init(dependencyType: .method,
                   name: nil,
                   type: "Factory",
@@ -195,7 +195,7 @@ final class ParserTests: XCTestCase {
     
     func testParsingMethod_oneParameter_oneDependency() {
         //expected
-        let expectedModules = createExpectedModule(types: [
+        let expectedModules: Set<DependencyModule> = .fixture(types: [
             .init(dependencyType: .method,
                   name: nil,
                   type: "ExtraModel",
@@ -219,7 +219,7 @@ final class ParserTests: XCTestCase {
     
     func testParsingMethod_oneParameter_namedDependency() {
         //expected
-        let expectedModules = createExpectedModule(types: [
+        let expectedModules: Set<DependencyModule> = .fixture(types: [
             .init(dependencyType: .method,
                   name: "AnotherExtraModel",
                   type: "ExtraModel",
@@ -244,7 +244,7 @@ final class ParserTests: XCTestCase {
     
     func testParsingMethod_oneParameter_namedDependency_withEnum() {
         //expected
-        let expectedModules = createExpectedModule(types: [
+        let expectedModules: Set<DependencyModule> = .fixture(types: [
             .init(dependencyType: .method,
                   name: "AnotherExtraModel",
                   type: "ExtraModel",
@@ -273,7 +273,7 @@ final class ParserTests: XCTestCase {
     
     func testParsingMethod_returnsTuple_dependency() {
         //expected
-        let expectedModules = createExpectedModule(types: [
+        let expectedModules: Set<DependencyModule> = .fixture(types: [
             .init(dependencyType: .method,
                   name: nil,
                   type: "(ExtraModel, String)",
@@ -297,7 +297,7 @@ final class ParserTests: XCTestCase {
     
     func testSkipParsingVoidMethod() {
         //expected
-        let expectedModules = createExpectedModule(types: [])
+        let expectedModules: Set<DependencyModule> = .fixture(types: [])
         
         //given
         let content = createContent("""
@@ -316,7 +316,7 @@ final class ParserTests: XCTestCase {
     
     func testSkipParsingStoredVariables() {
         //expected
-        let expectedModules = createExpectedModule(types: [])
+        let expectedModules: Set<DependencyModule> = .fixture(types: [])
         
         //given
         let content = createContent("""
@@ -352,10 +352,12 @@ private extension ParserTests {
       }
       """
     }
-    
-    func createExpectedModule(type: DependencyModule.ModuleType = .class,
-                              scope: DependencyModule.Scope = .transient,
-                              types: Set<Dependency>) -> Set<DependencyModule> {
+}
+
+extension Set<DependencyModule> {
+    static func fixture(type: DependencyModule.ModuleType = .class,
+                        scope: DependencyModule.Scope = .transient,
+                        types: Set<Dependency>) -> Set<DependencyModule> {
         [
             .init(type: type,
                   imports: ["Arrow", "Another"],
