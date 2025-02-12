@@ -11,25 +11,25 @@ final class ModuleParser: SyntaxVisitor {
     }
     
     override func visit(_ node: ExtensionDeclSyntax) -> SyntaxVisitorContinueKind {
-        let identifier = node.extendedType.withoutTrivia().description
+        let identifier = node.extendedType.trimmed.description
         return createModule(.extension, node, node.inheritanceClause, identifier)
     }
     
     override func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
-        return createModule(.class, node, node.inheritanceClause, node.identifier.text)
+        return createModule(.class, node, node.inheritanceClause, node.name.text)
     }
     
     override func visit(_ node: StructDeclSyntax) -> SyntaxVisitorContinueKind {
-        return createModule(.struct, node, node.inheritanceClause, node.identifier.text)
+        return createModule(.struct, node, node.inheritanceClause, node.name.text)
     }
     
     private func createModule(_ type: DependencyModule.ModuleType,
                               _ node: DeclSyntaxProtocol,
-                              _ inheritanceClause: TypeInheritanceClauseSyntax?,
+                              _ inheritanceClause: InheritanceClauseSyntax?,
                               _ name: String) -> SyntaxVisitorContinueKind {
         let scope = inheritanceClause?
-            .inheritedTypeCollection
-            .compactMap { $0.typeName.withoutTrivia().firstToken?.text }
+            .inheritedTypes
+            .compactMap { $0.type.firstToken(viewMode: .sourceAccurate)?.trimmed.text }
             .compactMap { DependencyModule.Scope.init(rawValue: $0) }
             .first
         guard let scope else { return .skipChildren }

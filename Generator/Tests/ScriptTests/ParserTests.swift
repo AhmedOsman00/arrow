@@ -246,7 +246,7 @@ final class ParserTests: XCTestCase {
         //expected
         let expectedModules: Set<DependencyModule> = .fixture(types: [
             .init(dependencyType: .method,
-                  name: "AnotherExtraModel",
+                  name: nil,
                   type: "ExtraModel",
                   block: "provideExtraModel",
                   parameters: [.init(type: "Delegate", name: "delegate", value: nil)]),
@@ -258,7 +258,6 @@ final class ParserTests: XCTestCase {
                 case test
             }
             
-            @Named("AnotherExtraModel")
             func provideExtraModel(delegate: Delegate) -> ExtraModel {
                 ExtraModel(service: Service(name: "", value: 0))
             }
