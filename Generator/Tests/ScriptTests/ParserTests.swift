@@ -10,7 +10,7 @@ final class ParserTests: XCTestCase {
             //expected
             let expectedModules: Set<DependencyModule> = .fixture(type: type, types: [
                 .init(dependencyType: .variable,
-                      name: "Delegate",
+                      name: nil,
                       type: "Delegate",
                       block: "delegate",
                       parameters: []),
@@ -36,7 +36,7 @@ final class ParserTests: XCTestCase {
             //expected
             let expectedModules: Set<DependencyModule> = .fixture(scope: scope, types: [
                 .init(dependencyType: .variable,
-                      name: "Delegate",
+                      name: nil,
                       type: "Delegate",
                       block: "delegate",
                       parameters: []),
@@ -76,7 +76,7 @@ final class ParserTests: XCTestCase {
         //expected
         let expectedModules: Set<DependencyModule> = .fixture(types: [
             .init(dependencyType: .variable,
-                  name: "Delegate",
+                  name: nil,
                   type: "Delegate",
                   block: "delegate",
                   parameters: []),
@@ -127,12 +127,38 @@ final class ParserTests: XCTestCase {
                   name: nil,
                   type: "ViewModel",
                   block: "provideViewModel",
-                  parameters: [.init(type: "Delegate", name: "_", value: nil)]),
+                  parameters: [.fixture(type: "Delegate", name: "_")]),
         ])
         
         //given
         let content = createContent("""
             func provideViewModel(_ delegate: Delegate) -> ViewModel {
+                ViewModel(delegate: delegate, factory: Factory())
+            }
+        """)
+        
+        //when
+        let modules = parse(content)
+        
+        //then
+        XCTAssertEqual(modules, expectedModules)
+    }
+    
+    func testParsingMethod_oneParameterWithoutName_namedDependecy() {
+        //expected
+        let expectedModules: Set<DependencyModule> = .fixture(types: [
+            .init(dependencyType: .method,
+                  name: nil,
+                  type: "ViewModel",
+                  block: "provideViewModel",
+                  parameters: [.fixture(type: "Delegate",
+                                        name: "_",
+                                        dependencyId: "AnotherDelegate")]),
+        ])
+        
+        //given
+        let content = createContent("""
+            func provideViewModel(@Named("AnotherDelegate") _ delegate: Delegate) -> ViewModel {
                 ViewModel(delegate: delegate, factory: Factory())
             }
         """)
@@ -151,8 +177,8 @@ final class ParserTests: XCTestCase {
                   name: nil,
                   type: "ViewModel",
                   block: "provideViewModel",
-                  parameters: [.init(type: "Delegate", name: "_", value: nil),
-                               .init(type: "Factory", name: "_", value: nil)]),
+                  parameters: [.fixture(type: "Delegate", name: "_"),
+                               .fixture(type: "Factory", name: "_")]),
         ])
         
         //given
@@ -176,7 +202,7 @@ final class ParserTests: XCTestCase {
                   name: nil,
                   type: "Factory",
                   block: "provideFactory",
-                  parameters: [.init(type: "Delegate", name: "delegate", value: "Delegate()")]),
+                  parameters: [.fixture(type: "Delegate", name: "delegate", value: "Delegate()")]),
         ])
         
         //given
@@ -200,7 +226,7 @@ final class ParserTests: XCTestCase {
                   name: nil,
                   type: "ExtraModel",
                   block: "provideModel",
-                  parameters: [.init(type: "Delegate", name: "delegate", value: nil)]),
+                  parameters: [.fixture(type: "Delegate", name: "delegate")]),
         ])
         
         //given
@@ -224,13 +250,38 @@ final class ParserTests: XCTestCase {
                   name: "AnotherExtraModel",
                   type: "ExtraModel",
                   block: "provideExtraModel",
-                  parameters: [.init(type: "Delegate", name: "delegate", value: nil)]),
+                  parameters: [.fixture(type: "Delegate", name: "delegate")]),
         ])
         
         //given
         let content = createContent("""
             @Named("AnotherExtraModel")
             func provideExtraModel(delegate: Delegate) -> ExtraModel {
+                ExtraModel(service: Service(name: "", value: 0))
+            }
+        """)
+        
+        //when
+        let modules = parse(content)
+        
+        //then
+        XCTAssertEqual(modules, expectedModules)
+    }
+    
+    func testParsingVariable_namedDependency() {
+        //expected
+        let expectedModules: Set<DependencyModule> = .fixture(types: [
+            .init(dependencyType: .variable,
+                  name: "AnotherExtraModel",
+                  type: "ExtraModel",
+                  block: "provideExtraModel",
+                  parameters: []),
+        ])
+        
+        //given
+        let content = createContent("""
+            @Named("AnotherExtraModel")
+            var provideExtraModel: ExtraModel {
                 ExtraModel(service: Service(name: "", value: 0))
             }
         """)
@@ -249,7 +300,7 @@ final class ParserTests: XCTestCase {
                   name: nil,
                   type: "ExtraModel",
                   block: "provideExtraModel",
-                  parameters: [.init(type: "Delegate", name: "delegate", value: nil)]),
+                  parameters: [.fixture(type: "Delegate", name: "delegate")]),
         ])
         
         //given
@@ -277,7 +328,7 @@ final class ParserTests: XCTestCase {
                   name: nil,
                   type: "(ExtraModel, String)",
                   block: "provideExtraModel",
-                  parameters: [.init(type: "Delegate", name: "delegate", value: nil)]),
+                  parameters: [.fixture(type: "Delegate", name: "delegate")]),
         ])
         
         //given
@@ -356,7 +407,7 @@ private extension ParserTests {
 extension Set<DependencyModule> {
     static func fixture(type: DependencyModule.ModuleType = .class,
                         scope: DependencyModule.Scope = .transient,
-                        types: Set<Dependency>) -> Set<DependencyModule> {
+                        types: Set<Dependency>) -> Self {
         [
             .init(type: type,
                   imports: ["Arrow", "Another"],
@@ -364,5 +415,14 @@ extension Set<DependencyModule> {
                   scope: scope,
                   types: types)
         ]
+    }
+}
+
+extension Dependency.Parameter {
+    static func fixture(type: String,
+                        name: String? = nil,
+                        value: String? = nil,
+                        dependencyId: String? = nil) -> Self {
+        .init(type: type, name: name, value: value, dependencyId: dependencyId)
     }
 }

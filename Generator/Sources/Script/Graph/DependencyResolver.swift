@@ -6,7 +6,7 @@ final class DependencyResolver {
 
     init(data: Set<DependencyModule>) {
         self.data = data
-        self.graph = Dictionary(data.flatMap(\.types).map { ($0.type, $0.dependencies) }) { $1 }
+        self.graph = Dictionary(data.flatMap(\.types).map { ($0.id, $0.dependencies) }) { $1 }
     }
 
     /// Resolves the dependency graph and returns the order of dependencies.

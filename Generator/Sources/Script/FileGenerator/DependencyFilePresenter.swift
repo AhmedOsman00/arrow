@@ -1,48 +1,52 @@
 import Foundation
 
 protocol DependencyFilePresenting {
-    var imports: Set<String> { get }
-    var moduleNames: Set<String> { get }
-    var objects: [Object] { get }
+    var fileUiModel: FileUiModel { get }
 }
 
 class DependencyFilePresenter: DependencyFilePresenting {
     private let data: [DependencyModule]
     private let dependenciesOrder: [String]
+    
+    lazy var fileUiModel: FileUiModel = mapDependencyModulesToUiModule(data, dependenciesOrder)
 
-    var imports: Set<String> {
-//        var imports = types.flatMap(\.imports).asSet()
-//        imports.insert("Swinject")
-        return []
-    }
-
-    var moduleNames: Set<String> {
-//        types.map(\.module).asSet()
-        []
-    }
-
+    
     init(data: [DependencyModule], dependenciesOrder: [String]) {
         self.data = data
         self.dependenciesOrder = dependenciesOrder
     }
-
-    var objects: [Object] {
-//        types.map { type in
-//            Object(module: type.module,
-//                   name: type.name,
-//                   block: type.block,
-//                   scope: type.scope.description,
-//                   args:  getArgs(type.parameters))
-//        }
-        []
-    }
-
-    private func getArgs(_ parameters: [DependencyParameter]) -> [Arg] {
-        parameters.map {
-            Arg(name: $0.name == "_" ? nil : $0.name,
-                value: $0.value,
-                comma: $0 == parameters.last)
+    
+    private func mapDependencyModulesToUiModule(_ modules: [DependencyModule],
+                                                _ dependenciesOrder: [String]) -> FileUiModel {
+        // Flatten the dependencies from all modules into a single array of DependencyUi
+        let dependencies = modules.flatMap { module in
+            module.types.map { dependency in
+                DependencyUiModel(
+                    module: module.name,
+                    type: dependency.type,
+                    name: dependency.name ?? dependency.type,
+                    block: dependency.block,
+                    scope: module.scope.description,
+                    parameters: dependency.parameters.map { parameter in
+                        DependencyUiModel.Parameter(name: parameter.name == "_" ? nil : parameter.name,
+                                                    value: parameter.value,
+                                                    id: parameter.dependencyId,
+                                                    isLast: parameter == dependency.parameters.last)
+                    }
+                )
+            }
         }
+
+        return FileUiModel(imports: modules.flatMap(\.imports).asSet(),
+                           dependencies: sortDependencyUiModels(dependencies, dependenciesOrder))
+    }
+    
+    private func sortDependencyUiModels(_ dependencies: [DependencyUiModel],
+                                        _ dependenciesOrder: [String]) -> [DependencyUiModel] {
+        let dependenciesByType: [String: DependencyUiModel] = dependencies.reduce(into: [:]) { result, dependency in
+            result[dependency.id] = dependency
+        }
+        return dependenciesOrder.compactMap { dependenciesByType[$0] }
     }
 }
 
