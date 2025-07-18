@@ -21,7 +21,7 @@ class DependencyFile {
     
     /*
      import UIKit
-     import Swinject
+     import Arrow
      
      extension Container {
      
@@ -29,7 +29,7 @@ class DependencyFile {
             let module = Module()
      
             self.register(Type.self, name: "Type", objectScope: .transient) { resolver in
-                module.provide(resolver.resolved(), a: resolver.resolved(), b: B())
+                module.provide(resolver.resolved(), a: resolver.resolved(), b: B(), c: resolver.resolved("cType"))
             }
         }
      }
@@ -38,7 +38,7 @@ class DependencyFile {
                                      endOfFileToken: .endOfFileToken())
     
     private func createStatements() -> [CodeBlockItemListSyntax.Element] {
-        var statements = presenter.imports.map(importDecl).map {
+        var statements = presenter.fileUiModel.imports.map(importDecl).map {
             CodeBlockItemSyntax(item: .init($0), semicolon: nil)
         }
         statements.append(CodeBlockItemSyntax(item: .decl(extensionDecl.asDecl())))
@@ -93,9 +93,9 @@ class DependencyFile {
                                                            rightParen: .rightParenToken(trailingTrivia: .space))
         ),
         body: CodeBlockSyntax(leftBrace: leftBrace,
-                              statements: CodeBlockItemListSyntax(presenter.moduleNames.map(map) +
-                                                                  presenter.objects.map(map)),
-                              rightBrace: rightBrace.with(\.leadingTrivia, .newline + firstIntend))
+                              statements: CodeBlockItemListSyntax(presenter.fileUiModel.modules.map(map) +
+                                                                  presenter.fileUiModel.dependencies.map(map)),
+                              rightBrace: rightBrace.with(\.leadingTrivia, firstIntend))
     )
 
     /*
@@ -113,7 +113,8 @@ class DependencyFile {
         let pattern = PatternBindingSyntax(pattern: identifier, initializer: initializer)
         let varibale = VariableDeclSyntax(
             bindingSpecifier: .keyword(.let, leadingTrivia: secondIntend, trailingTrivia: .space),
-            bindings: .init([pattern])
+            bindings: .init([pattern]),
+            trailingTrivia: .newline
         )
         
         return .init(item: .decl(varibale.asDecl()))
@@ -124,15 +125,16 @@ class DependencyFile {
          module.provide(resolver.resolved(), a: resolver.resolved(), b: B())
      }
      */
-    private func map(_ object: Object) -> CodeBlockItemSyntax {
-        let function = FunctionCallExprSyntax(leadingTrivia: .newlines(2) + secondIntend,
+    private func map(_ object: DependencyUiModel) -> CodeBlockItemSyntax {
+        let function = FunctionCallExprSyntax(leadingTrivia: .newlines(1) + secondIntend,
                                               calledExpression: createResgisterCall(),
                                               leftParen: leftParen,
                                               arguments: .init([createTypeArgument(object.name),
                                                                 createNameArgument(object.name),
                                                                 createScopeArgument(object.scope)]),
                                               rightParen: rightParen,
-                                              trailingClosure: createClosure(object))
+                                              trailingClosure: createClosure(object),
+                                              trailingTrivia: .newline)
 
         return .init(item: .expr(function.asExpr()))
     }
@@ -149,11 +151,11 @@ class DependencyFile {
     /*
      module.provide(resolver.resolved(), a: resolver.resolved(), b: B())
      */
-    private func createStatements(_ object: Object) -> [CodeBlockItemSyntax] {
+    private func createStatements(_ object: DependencyUiModel) -> [CodeBlockItemSyntax] {
         let item = FunctionCallExprSyntax(calledExpression: createModuleFuncCall(module: object.module,
                                                                                  block: object.block).asExpr(),
                                           leftParen: leftParen,
-                                          arguments: LabeledExprListSyntax(object.args.map(map)),
+                                          arguments: LabeledExprListSyntax(object.parameters.map(map)),
                                           rightParen: rightParen,
                                           trailingClosure: nil)
         return [CodeBlockItemSyntax(leadingTrivia: thirdIntend, item: .expr(item.asExpr()))]
@@ -172,11 +174,11 @@ class DependencyFile {
     /*
      resolver.resolved(), a: resolver.resolved(), b: B()
      */
-    private func map(_ arg: Arg) -> LabeledExprSyntax {
+    private func map(_ arg: DependencyUiModel.Parameter) -> LabeledExprSyntax {
         .init(label: .identifier(arg.name ?? ""),
               colon: arg.name == nil ? nil : colon,
-              expression: createResolvedCall(arg.value),
-              trailingComma: arg.comma ? comma : nil)
+              expression: createResolvedCall(arg.value, arg.id),
+              trailingComma: arg.isLast ? nil : comma)
     }
     
     /*
@@ -184,7 +186,7 @@ class DependencyFile {
          module.provide(resolver.resolved(), a: resolver.resolved(), b: B())
      }
      */
-    private func createClosure(_ object: Object) -> ClosureExprSyntax {
+    private func createClosure(_ object: DependencyUiModel) -> ClosureExprSyntax {
         .init(leftBrace: .leftBraceToken(leadingTrivia: .space, trailingTrivia: .space),
               signature: .init(parameterClause: .simpleInput(createResolver()),
                                                 inKeyword: .keyword(.in, leadingTrivia: .space, trailingTrivia: .newline)),
@@ -196,9 +198,7 @@ class DependencyFile {
     private func createNameArgument(_ type: String) -> LabeledExprSyntax {
         .init(label: .identifier("name"),
               colon: colon,
-              expression: StringLiteralExprSyntax(openingQuote: .stringQuoteToken(),
-                                                  segments: [.stringSegment(.init(content: .stringSegment(type)))],
-                                                  closingQuote: .stringQuoteToken()),
+              expression: StringLiteralExprSyntax.string(type),
               trailingComma: comma)
     }
     
@@ -223,14 +223,13 @@ class DependencyFile {
     }
     
     // resolver.resolved()
-    private func createResolvedCall(_ value: String?) -> ExprSyntax {
+    private func createResolvedCall(_ value: String?, _ id: String?) -> ExprSyntax {
         guard let value else {
             let resolved = MemberAccessExprSyntax(base: DeclReferenceExprSyntax(baseName: .identifier("resolver")),
                                                   declName: .init(baseName: .identifier("resolved")))
-            
             return FunctionCallExprSyntax(calledExpression: resolved,
                                           leftParen: leftParen,
-                                          arguments: [],
+                                          arguments: id == nil ? [] : [.init(expression: StringLiteralExprSyntax.string(id!))],
                                           rightParen: rightParen).asExpr()
         }
             
@@ -241,6 +240,14 @@ class DependencyFile {
 extension ExprSyntaxProtocol {
     func asExpr() -> ExprSyntax {
         ExprSyntax(self)
+    }
+}
+
+extension StringLiteralExprSyntax {
+    static func string(_ content: String) -> StringLiteralExprSyntax {
+        StringLiteralExprSyntax(openingQuote: .stringQuoteToken(),
+                                segments: [.stringSegment(.init(content: .stringSegment(content)))],
+                                closingQuote: .stringQuoteToken())
     }
 }
 
