@@ -1,10 +1,10 @@
 import Foundation
 
 final class DependencyResolver {
-    private let data: Set<DependencyModule>
+    private let data: [DependencyModule]
     private let graph: [String: [String]]
 
-    init(data: Set<DependencyModule>) {
+    init(data: [DependencyModule]) {
         self.data = data
         self.graph = Dictionary(data.flatMap(\.types).map { ($0.id, $0.dependencies) }) { $1 }
     }
@@ -15,21 +15,21 @@ final class DependencyResolver {
         try validate()
         return try resolve()
     }
-    
+
     /// Resolves the dependency graph and returns the order of dependencies.
     /// Does not perform validation. Use `validate()` to check for errors.
     func resolve() throws -> [String] {
         var visited = Set<String>()
         var visiting = Set<String>()
         var order = [String]()
-        
+
         func visit(_ node: String) throws {
             guard !visiting.contains(node) else {
                 throw DependencyError.circularDependency(node, graph[node] ?? [])
             }
-            
+
             guard !visited.contains(node) else { return }
-            
+
             visiting.insert(node)
             for neighbor in graph[node] ?? [] {
                 try visit(neighbor)
@@ -38,11 +38,11 @@ final class DependencyResolver {
             visited.insert(node)
             order.append(node)
         }
-        
+
         for node in graph.keys {
             try visit(node)
         }
-        
+
         return order
     }
 
@@ -51,12 +51,12 @@ final class DependencyResolver {
         try validateAllDependencyFound()
         try validateNoDuplicateDependencies()
     }
-    
+
     enum DependencyError: Error {
         case missingDependencies(Set<String>)
         case duplicateDependencies([String])
         case circularDependency(String, [String])
-        
+
         var errorDescription: String? {
             switch self {
             case let .missingDependencies(missing):
@@ -74,12 +74,12 @@ private extension DependencyResolver {
     func validateAllDependencyFound() throws {
         let dependencies = Set(data.flatMap(\.types).flatMap(\.dependencies))
         let missingDependencies = dependencies.subtracting(graph.keys)
-        
+
         guard missingDependencies.isEmpty else {
             throw DependencyError.missingDependencies(missingDependencies)
         }
     }
-    
+
     func validateNoDuplicateDependencies() throws {
         var set = Set<String>()
         let types = data.flatMap(\.types).map(\.id)
