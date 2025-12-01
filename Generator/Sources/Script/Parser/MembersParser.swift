@@ -18,6 +18,7 @@ final class MembersParser: SyntaxVisitor {
               !node.bindings.contains(where: { $0.initializer != nil }),
               let type = binding.typeAnnotation?.type.trimmed.description
         else { return .skipChildren }
+
         let block = binding.pattern.trimmed.description
         let name = getName(from: node.attributes)
         let dependencyType = Dependency(dependencyType: .variable,

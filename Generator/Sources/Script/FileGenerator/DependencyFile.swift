@@ -3,11 +3,13 @@ import SwiftSyntax
 
 class DependencyFile {
     private let presenter: DependencyFilePresenting
-    
-    init(_ presenter: DependencyFilePresenting) {
+    private let registerSuffix: String
+
+    init(presenter: DependencyFilePresenting, registerSuffix: String) {
         self.presenter = presenter
+        self.registerSuffix = registerSuffix
     }
-    
+
     private let firstIntend = Trivia.spaces(4)
     private let secondIntend = Trivia.spaces(8)
     private let thirdIntend = Trivia.spaces(12)
@@ -18,14 +20,14 @@ class DependencyFile {
     private let rightParen = TokenSyntax.rightParenToken()
     private let comma = TokenSyntax.commaToken(trailingTrivia: .spaces(1))
     private let dot = TokenSyntax.periodToken()
-    
+
     /*
      import UIKit
      import Arrow
      
      extension Container {
      
-        func resgister() {
+        func resgisterPackage() {
             let module = Module()
      
             self.register(Type.self, name: "Type", objectScope: .transient) { resolver in
@@ -86,7 +88,7 @@ class DependencyFile {
     private lazy var registerFuncDecl = FunctionDeclSyntax(
         leadingTrivia: firstIntend,
         funcKeyword: .keyword(.func, trailingTrivia: .space),
-        name: .identifier("register"),
+        name: .identifier("register\(registerSuffix)"),
         signature: FunctionSignatureSyntax(
             parameterClause: FunctionParameterClauseSyntax(leftParen: leftParen,
                                                            parameters: [],
