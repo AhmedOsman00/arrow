@@ -1,7 +1,8 @@
+import Constants
 import Foundation
 import SwiftSyntax
 
-final class MembersParser: SyntaxVisitor {
+final class DependenciesParser: SyntaxVisitor {
     private var dependencies = Set<Dependency>()
     
     override func visit(_ node: MemberBlockItemSyntax) -> SyntaxVisitorContinueKind {
@@ -56,11 +57,11 @@ final class MembersParser: SyntaxVisitor {
     }
 }
 
-private extension MembersParser {
+private extension DependenciesParser {
     func getName(from attributes: AttributeListSyntax) -> String? {
         attributes
             .compactMap { $0.as(AttributeSyntax.self) }
-            .first { $0.attributeName.description.contains("Named") }?
+            .first { $0.attributeName.description.contains(Constants.namedMacro) }?
             .arguments?.as(LabeledExprListSyntax.self)?
             .first?
             .expression

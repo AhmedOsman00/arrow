@@ -33,13 +33,3 @@ lint:
 	@echo "🔍 Running SwiftLint..."
 	@swiftlint --strict
 	@echo "✅ Linting complete."
-
-# Format Swift files using swift-format (if installed)
-format:
-	@if ! command -v swift-format &> /dev/null; then \
-		echo "⚠️  swift-format not installed. Skipping format."; \
-	else \
-		echo "🎨 Formatting Swift files..."; \
-		swift-format format -i $(SWIFT_FILES); \
-		echo "✅ Format complete."; \
-	fi

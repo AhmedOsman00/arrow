@@ -1,5 +1,5 @@
 import XCTest
-@testable import Script
+@testable import ArrowGeneratorCore
 
 class DependencyResolverTests: XCTestCase {
     
@@ -12,7 +12,7 @@ class DependencyResolverTests: XCTestCase {
             ]
         )
         
-        let resolver = DependencyResolver(data: [module])
+        let resolver = DependencyGraphResolver(data: [module])
         
         // Resolve dependency order
         let order = try resolver.resolve()
@@ -28,7 +28,7 @@ class DependencyResolverTests: XCTestCase {
             ]
         )
         
-        let resolver = DependencyResolver(data: [module])
+        let resolver = DependencyGraphResolver(data: [module])
         
         // Resolve dependency order
         let order = try resolver.resolve()
@@ -50,7 +50,7 @@ class DependencyResolverTests: XCTestCase {
             ]
         )
         
-        let resolver = DependencyResolver(data: [module1, module2])
+        let resolver = DependencyGraphResolver(data: [module1, module2])
         
         // Resolve dependency order
         let order = try resolver.resolve()
@@ -66,11 +66,11 @@ class DependencyResolverTests: XCTestCase {
             ]
         )
         
-        let resolver = DependencyResolver(data: [module])
+        let resolver = DependencyGraphResolver(data: [module])
         
         // Check for missing dependencies
         XCTAssertThrowsError(try resolver.validate()) { error in
-            guard case let DependencyResolver.DependencyError.missingDependencies(missing) = error else {
+            guard case let DependencyGraphResolver.DependencyError.missingDependencies(missing) = error else {
                 return XCTFail("Expected missing dependencies error")
             }
             XCTAssertEqual(Set(missing), Set(["_:E", "_:D"]))
@@ -87,11 +87,11 @@ class DependencyResolverTests: XCTestCase {
             ]
         )
         
-        let resolver = DependencyResolver(data: [module])
+        let resolver = DependencyGraphResolver(data: [module])
         
         // Check for duplicate dependencies
         XCTAssertThrowsError(try resolver.validate()) { error in
-            guard case DependencyResolver.DependencyError.duplicateDependencies(let duplicates) = error else {
+            guard case DependencyGraphResolver.DependencyError.duplicateDependencies(let duplicates) = error else {
                 return XCTFail("Expected duplicate dependencies error")
             }
             XCTAssertEqual(duplicates, ["_:A"])
@@ -107,18 +107,18 @@ class DependencyResolverTests: XCTestCase {
             ]
         )
         
-        let resolver = DependencyResolver(data: [module])
+        let resolver = DependencyGraphResolver(data: [module])
         
         // Check for circular dependencies
         XCTAssertThrowsError(try resolver.resolve()) { error in
-            guard case DependencyResolver.DependencyError.circularDependency = error else {
+            guard case DependencyGraphResolver.DependencyError.circularDependency = error else {
                 return XCTFail("Expected circular dependency error")
             }
         }
     }
     
     func testEmptyGraph() throws {
-        let resolver = DependencyResolver(data: [])
+        let resolver = DependencyGraphResolver(data: [])
         
         // Resolve dependency order
         let order = try resolver.resolve()

@@ -1,5 +1,5 @@
 import XCTest
-@testable import Script
+@testable import ArrowGeneratorCore
 
 final class DependencyFilePresenterTests: XCTestCase {
     

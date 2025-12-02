@@ -22,6 +22,7 @@ struct DependencyModule: Hashable, Equatable, CustomStringConvertible {
     }
 
     enum Scope: String, Codable, CaseIterable {
+        // ⚠️ SYNC: Keep the raw value in sync with names of protocols in [arrow link]
         case singleton = "SingletonScope"
         case transient = "TransientScope"
 

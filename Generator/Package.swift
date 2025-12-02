@@ -3,43 +3,51 @@
 
 import PackageDescription
 
+// ⚠️ SYNC: Keep in sync with:
+// - Sources/Constants/Constants.swift
+// - Plugins/ArrowPlugin/ArrowPlugin.swift
+private let executableName = "arrow"
+
 let package = Package(
-    name: "Arrow",
+    name: "ArrowGenerator",
     platforms: [
         .macOS(.v10_15)
     ],
     products: [
-        .executable(name: "arrow", targets: ["Arrow"]),
+        .executable(name: executableName, targets: ["ArrowGenerator"]),
         .plugin(
-            name: "ArrowPlugin",
-            targets: ["ArrowPlugin"]
+            name: "ArrowGeneratorPlugin",
+            targets: ["ArrowGeneratorPlugin"]
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/console-kit.git", from: "4.5.0"),
-        .package(url: "https://github.com/apple/swift-syntax.git", exact: "600.0.1"),
+        .package(url: "https://github.com/vapor/console-kit.git", exact: "4.15.2"),
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", exact: "602.0.0"),
         .package(url: "https://github.com/kylef/PathKit.git", exact: "1.0.1"),
-        .package(url: "https://github.com/tuist/XcodeProj.git", .upToNextMajor(from: "8.8.0"))
+        .package(url: "https://github.com/tuist/XcodeProj.git", exact: "9.6.0")
     ],
     targets: [
         .executableTarget(
-            name: "Arrow",
-            dependencies: ["Script"]),
+            name: "ArrowGenerator",
+            dependencies: ["ArrowGeneratorCore"]),
         .plugin(
-            name: "ArrowPlugin",
-            capability: .buildTool()
+            name: "ArrowGeneratorPlugin",
+            capability: .buildTool(),
+            dependencies: ["ArrowGenerator"]
         ),
+        .target(name: "Constants"),
         .target(
-            name: "Script",
+            name: "ArrowGeneratorCore",
             dependencies: [
                 "PathKit",
                 .product(name: "ConsoleKit", package: "console-kit"),
                 .product(name: "SwiftSyntax", package: "swift-syntax"),
                 .product(name: "SwiftParser", package: "swift-syntax"),
-                "XcodeProj"
+                "XcodeProj",
+                "Constants"
             ]),
         .testTarget(
-            name: "ScriptTests",
-            dependencies: ["Script"])
+            name: "ArrowGeneratorCoreTests",
+            dependencies: ["ArrowGeneratorCore"])
     ]
 )

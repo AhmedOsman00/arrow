@@ -1,7 +1,7 @@
 import Foundation
 import SwiftSyntax
 
-final class ModuleParser: SyntaxVisitor {
+final class DependencyModulesParser: SyntaxVisitor {
     var imports = Set<String>()
     var modules = Set<DependencyModule>()
     
@@ -33,7 +33,7 @@ final class ModuleParser: SyntaxVisitor {
             .compactMap { DependencyModule.Scope.init(rawValue: $0) }
             .first
         guard let scope else { return .skipChildren }
-        let types = MembersParser(viewMode: .all).parse(node)
+        let types = DependenciesParser(viewMode: .all).parse(node)
         let module = DependencyModule(type: type, imports: imports, name: name, scope: scope, types: types)
         modules.insert(module)
         return .visitChildren
