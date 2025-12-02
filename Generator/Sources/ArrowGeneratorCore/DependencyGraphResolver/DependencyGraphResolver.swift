@@ -1,6 +1,6 @@
 import Foundation
 
-final class DependencyResolver {
+final class DependencyGraphResolver {
     private let data: [DependencyModule]
     private let graph: [String: [String]]
 
@@ -70,7 +70,7 @@ final class DependencyResolver {
     }
 }
 
-private extension DependencyResolver {
+private extension DependencyGraphResolver {
     func validateAllDependencyFound() throws {
         let dependencies = Set(data.flatMap(\.types).flatMap(\.dependencies))
         let missingDependencies = dependencies.subtracting(graph.keys)

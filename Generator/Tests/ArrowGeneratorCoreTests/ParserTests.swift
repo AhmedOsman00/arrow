@@ -1,7 +1,7 @@
 import XCTest
 import SwiftSyntax
 import SwiftParser
-@testable import Script
+@testable import ArrowGeneratorCore
 
 final class ParserTests: XCTestCase {
     
@@ -386,7 +386,7 @@ final class ParserTests: XCTestCase {
 private extension ParserTests {
     func parse(_ content: String) -> Set<DependencyModule> {
         let tree = Parser.parse(source: content)
-        let syntaxVisitor = ModuleParser(viewMode: .all)
+        let syntaxVisitor = DependencyModulesParser(viewMode: .all)
         return syntaxVisitor.parse(tree)
     }
     

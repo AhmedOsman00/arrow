@@ -1,5 +1,5 @@
 import XCTest
-@testable import Script
+@testable import ArrowGeneratorCore
 
 class DependencyFileTests: XCTestCase {
     
@@ -8,7 +8,7 @@ class DependencyFileTests: XCTestCase {
 import Arrow
 
 extension Container {
-    func register() {
+    func registerMain() {
         let module = Module()
 
         self.register(Type.self, name: "Type", objectScope: .transient) { resolver in
@@ -19,7 +19,7 @@ extension Container {
 """
         
         var file = ""
-        DependencyFile(DependencyFilePresenterMock(.fixture())).file.write(to: &file)
+        DependencyFile(presenter: DependencyFilePresenterMock(.fixture()), registerSuffix: "Main").file.write(to: &file)
         XCTAssertEqual(expectedOutput, file)
     }
     
@@ -57,7 +57,7 @@ extension Container {
                         .init(name: "e", value: nil, id: nil, isLast: true),
                      ])
         ]
-        DependencyFile(DependencyFilePresenterMock(.fixture(dependencies: dependencies))).file.write(to: &file)
+        DependencyFile(presenter: DependencyFilePresenterMock(.fixture(dependencies: dependencies)), registerSuffix: "").file.write(to: &file)
         XCTAssertEqual(expectedOutput, file)
     }
 }
