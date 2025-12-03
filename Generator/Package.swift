@@ -15,10 +15,6 @@ let package = Package(
     ],
     products: [
         .executable(name: executableName, targets: ["ArrowGenerator"]),
-        .plugin(
-            name: "ArrowGeneratorPlugin",
-            targets: ["ArrowGeneratorPlugin"]
-        ),
     ],
     dependencies: [
         .package(url: "https://github.com/vapor/console-kit.git", exact: "4.15.2"),
@@ -30,11 +26,6 @@ let package = Package(
         .executableTarget(
             name: "ArrowGenerator",
             dependencies: ["ArrowGeneratorCore"]),
-        .plugin(
-            name: "ArrowGeneratorPlugin",
-            capability: .buildTool(),
-            dependencies: ["ArrowGenerator"]
-        ),
         .target(name: "Constants"),
         .target(
             name: "ArrowGeneratorCore",
