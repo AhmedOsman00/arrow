@@ -37,7 +37,9 @@ class DependencyFilePresenter: DependencyFilePresenting {
             }
         }
 
-        return FileUiModel(imports: modules.flatMap(\.imports).asSet(),
+        var imports = modules.flatMap(\.imports).asSet()
+        imports.insert("Arrow") // Always import Arrow for Container type
+        return FileUiModel(imports: imports,
                            dependencies: sortDependencyUiModels(dependencies, dependenciesOrder))
     }
     
