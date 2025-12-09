@@ -52,7 +52,7 @@ final class DependencyGraphResolver {
         try validateNoDuplicateDependencies()
     }
 
-    enum DependencyError: Error {
+    enum DependencyError: LocalizedError {
         case missingDependencies(Set<String>)
         case duplicateDependencies([String])
         case circularDependency(String, [String])

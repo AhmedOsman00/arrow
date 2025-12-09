@@ -17,7 +17,7 @@ let package = Package(
         .executable(name: executableName, targets: ["ArrowGenerator"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/console-kit.git", exact: "4.15.2"),
+        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
         .package(url: "https://github.com/swiftlang/swift-syntax.git", exact: "602.0.0"),
         .package(url: "https://github.com/kylef/PathKit.git", exact: "1.0.1"),
         .package(url: "https://github.com/tuist/XcodeProj.git", exact: "9.6.0")
@@ -31,7 +31,7 @@ let package = Package(
             name: "ArrowGeneratorCore",
             dependencies: [
                 "PathKit",
-                .product(name: "ConsoleKit", package: "console-kit"),
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "SwiftSyntax", package: "swift-syntax"),
                 .product(name: "SwiftParser", package: "swift-syntax"),
                 "XcodeProj",

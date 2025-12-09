@@ -2,10 +2,8 @@ import XCTest
 import class Foundation.Bundle
 
 final class ArrowTests: XCTestCase {
-    func testExample() throws {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct
-        // results.
+    func testCLI_withoutArguments_showsHelpOverview() throws {
+        // Verifies that running the Arrow CLI without arguments displays the help overview
 
         // Some of the APIs that we use below are available in macOS 10.13 and above.
         guard #available(macOS 10.13, *) else {
@@ -29,7 +27,11 @@ final class ArrowTests: XCTestCase {
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         let output = String(data: data, encoding: .utf8)
 
-        XCTAssertEqual(output, "Hello, world!\n")
+        // Verify the tool shows help overview when run without arguments
+        XCTAssertNotNil(output)
+        XCTAssertTrue(output?.contains("OVERVIEW: A Swift command-line tool") ?? false)
+        XCTAssertTrue(output?.contains("USAGE: arrow <subcommand>") ?? false)
+        XCTAssertTrue(output?.contains("generate") ?? false)
         #endif
     }
 

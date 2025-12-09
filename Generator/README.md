@@ -16,7 +16,7 @@ This eliminates the tedious and error-prone task of manually writing dependency 
 - **Automatic Dependency Discovery**: Scans Swift files and finds all dependency modules
 - **Graph Resolution**: Automatically determines correct registration order
 - **Validation**: Detects missing, duplicate, and circular dependencies
-- **Named Dependencies**: Supports `@Named("...")` macro for multiple instances of the same type
+- **Named Dependencies**: Supports `@Name("...")` and `@Named("...")` attributes for multiple instances of the same type
 - **Default Parameters**: Handles methods with default parameter values
 - **Dual Mode**: Works with both Xcode projects and Swift Packages
 - **Xcode Integration**: Automatically adds generated file to your Xcode project
@@ -99,6 +99,33 @@ arrow generate \
   --target-name YourTarget
 ```
 
+**Including External Swift Packages:**
+
+If your Xcode project depends on external Swift Packages, you can scan them too:
+
+```bash
+# Single package Sources directory
+arrow generate \
+  --xcode-proj-path /path/to/YourApp.xcodeproj \
+  --target-name YourTarget \
+  --package-sources-path /path/to/Package/Sources
+
+# Find all "Sources" directories recursively using /**
+arrow generate \
+  --xcode-proj-path /path/to/YourApp.xcodeproj \
+  --target-name YourTarget \
+  --package-sources-path "Dependencies/**"
+
+# Multiple paths (can be combined)
+arrow generate \
+  --xcode-proj-path /path/to/YourApp.xcodeproj \
+  --target-name YourTarget \
+  --package-sources-path "Dependencies/**" \
+  --package-sources-path /path/to/OtherPackage/Sources
+```
+
+**Note**: The `/**` pattern automatically finds all directories named "Sources" under the specified path, making it easy to scan multiple Swift Packages at once.
+
 **Environment Variables** (useful for Xcode build phases):
 
 ```bash
@@ -121,28 +148,19 @@ arrow generate
 
 ### Swift Package Mode
 
-Use this mode when working with Swift Packages:
+Use this mode when working with standalone Swift Packages (without Xcode project):
 
 ```bash
 arrow generate \
   --is-package \
-  --package-name MyPackage \
-  --package-sources-path /path/to/Sources
+  --package-sources-path /path/to/Package/Sources
 ```
 
-**Note**: For Swift Package projects, consider using the [Arrow Generator Plugin](#swift-package-plugin-recommended-for-swift-packages) which provides a more convenient workflow through Swift Package Manager integration:
+**Swift Package Plugin Alternative (Recommended)**: For Swift Package projects, the [Arrow Generator Plugin](#swift-package-plugin-recommended-for-swift-packages) provides a more convenient workflow through Swift Package Manager integration:
 
 ```bash
 swift package plugin arrow-generator --allow-writing-to-package-directory
 ```
-
-### Modularization
-
-For projects split into multiple modules (packages, frameworks, or targets), see the [Modularization Guide](docs/MODULARIZATION.md) for:
-- Batch generation scripts with wildcard patterns
-- Xcode build phase integration
-- Multi-module project structures
-- Best practices and troubleshooting
 
 ## Writing Dependency Modules
 
@@ -168,23 +186,23 @@ final class AppModule: SingletonScope {
 
 ### Named Dependencies
 
-Use `@Named("...")` to provide multiple instances of the same type:
+Use `@Name("...")` to declare named dependencies and `@Named("...")` to inject them:
 
 ```swift
 final class ConfigModule: SingletonScope {
-    @Named("Production")
+    @Name("Production")
     var prodAPI: APIClient {
         APIClient(baseURL: "https://api.production.com")
     }
 
-    @Named("Staging")
+    @Name("Staging")
     var stagingAPI: APIClient {
         APIClient(baseURL: "https://api.staging.com")
     }
 }
 
 final class ServiceModule: SingletonScope {
-    // Inject a named dependency
+    // Inject a named dependency using @Named
     func userService(@Named("Production") apiClient: APIClient) -> UserService {
         UserService(apiClient: apiClient)
     }
@@ -216,7 +234,8 @@ final class ViewModelModule: TransientScope {
 1. Only computed properties (not stored properties) are considered
 2. Only methods with return types are scanned (void methods are ignored)
 3. All parameters without default values are treated as dependencies
-4. Parameters with `@Named("...")` reference named dependencies
+4. Use `@Name("...")` on declarations to create named dependencies
+5. Use `@Named("...")` on method parameters to inject named dependencies
 
 ## Generated Output
 
@@ -226,7 +245,7 @@ Arrow Generator creates a `dependencies.generated.swift` file:
 import Arrow
 
 extension Container {
-    func registerYourTarget() {
+    func register() {
         let appModule = AppModule()
         let configModule = ConfigModule()
         let serviceModule = ServiceModule()
@@ -266,7 +285,7 @@ import Arrow
 
 // Setup container
 let container = Container()
-container.registerYourTarget()
+container.register()
 
 // Resolve dependencies
 let viewModel: HomeViewModel = container.resolved()
@@ -279,11 +298,13 @@ let prodAPI: APIClient = container.resolved("Production")
 arrow generate [OPTIONS]
 
 OPTIONS:
-  --xcode-proj-path <path>       Path to .xcodeproj file
-  --target-name <name>           Xcode target name to scan
-  --is-package                   Enable Swift Package mode
-  --package-name <name>          Package name (for registration method suffix)
-  --package-sources-path <path>  Path to package Sources directory
+  --is-package                   Enable Swift Package mode (no Xcode project required)
+  --xcode-proj-path <path>       Path to .xcodeproj file (required for Xcode mode)
+  --target-name <name>           Xcode target name to scan (required for Xcode mode)
+  --package-sources-path <path>  Path to Swift Package sources directory.
+                                 Use 'path/**' to find all 'Sources' directories
+                                 recursively, or provide direct path to a Sources
+                                 directory (can be specified multiple times)
   --help                         Show help information
 ```
 

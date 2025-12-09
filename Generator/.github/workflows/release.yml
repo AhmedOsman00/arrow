@@ -21,18 +21,18 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set Swift Version
+      - name: Set Xcode Version
         run: |
-          if [ ! -f .swift-version ]; then
-            echo "❌ Error: .swift-version file not found"
+          if [ ! -f .xcode-version ]; then
+            echo "❌ Error: .xcode-version file not found"
             exit 1
           fi
 
-          SWIFT_VERSION=$(cat .swift-version)
-          XCODE_PATH="/Applications/Xcode_$SWIFT_VERSION.app"
+          XCODE_VERSION=$(cat .xcode-version)
+          XCODE_PATH="/Applications/Xcode_$XCODE_VERSION.app"
 
           if [ ! -d "$XCODE_PATH" ]; then
-            echo "❌ Error: Xcode $SWIFT_VERSION not found at $XCODE_PATH"
+            echo "❌ Error: Xcode $XCODE_VERSION not found at $XCODE_PATH"
             echo "Available Xcode versions:"
             ls -d /Applications/Xcode*.app 2>/dev/null || echo "No Xcode installations found"
             exit 1
