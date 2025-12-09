@@ -52,7 +52,7 @@ final class XcodeFileParser {
         try project.write(path: xcodeProjPath, override: true)
     }
 
-    enum XcodeParserError: Error {
+    enum XcodeParserError: LocalizedError {
         case targetNotFound
         case malformedXcodeProjFile
 
