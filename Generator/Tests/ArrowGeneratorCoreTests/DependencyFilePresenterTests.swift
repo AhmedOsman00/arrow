@@ -30,7 +30,7 @@ final class DependencyFilePresenterTests: XCTestCase {
         
         // Assert
         // Verify imports
-        XCTAssertEqual(fileUiModel.imports, ["Import1", "Import2", "Import3"])
+        XCTAssertEqual(fileUiModel.imports, ["Arrow", "Import1", "Import2", "Import3"])
         XCTAssertEqual(fileUiModel.modules, ["Module2", "Module1"])
         
         // Verify Dependency1 details

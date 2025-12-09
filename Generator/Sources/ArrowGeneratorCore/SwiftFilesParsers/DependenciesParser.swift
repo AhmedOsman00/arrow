@@ -21,7 +21,7 @@ final class DependenciesParser: SyntaxVisitor {
         else { return .skipChildren }
 
         let block = binding.pattern.trimmed.description
-        let name = getName(from: node.attributes)
+        let name = getName(Constants.nameMacro, node.attributes)
         let dependencyType = Dependency(dependencyType: .variable,
                                         name: name,
                                         type: type,
@@ -34,12 +34,12 @@ final class DependenciesParser: SyntaxVisitor {
     override func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
         guard let returnType = node.signature.returnClause?.type else { return .skipChildren }
 
-        let name = getName(from: node.attributes)
+        let name = getName(Constants.nameMacro, node.attributes)
         let parameters: [Dependency.Parameter] = node.signature.parameterClause.parameters.compactMap {
             .init(type: $0.type.trimmed.description,
                   name: $0.firstName.trimmed.description,
                   value: $0.defaultValue?.value.trimmed.description,
-                  dependencyId: getName(from: $0.attributes))
+                  dependencyId: getName(Constants.namedProperty, $0.attributes))
         }
 
         let dependencyType = Dependency(dependencyType: .method,
@@ -58,10 +58,11 @@ final class DependenciesParser: SyntaxVisitor {
 }
 
 private extension DependenciesParser {
-    func getName(from attributes: AttributeListSyntax) -> String? {
+    func getName(_ attributeName: String,
+                 _ attributes: AttributeListSyntax) -> String? {
         attributes
             .compactMap { $0.as(AttributeSyntax.self) }
-            .first { $0.attributeName.description.contains(Constants.namedMacro) }?
+            .first { $0.attributeName.description.contains(attributeName) }?
             .arguments?.as(LabeledExprListSyntax.self)?
             .first?
             .expression

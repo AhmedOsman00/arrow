@@ -4,7 +4,7 @@ BUILD_DIR := .build
 OUTPUT := bin/arrow
 TEST_DIR := Tests
 
-.PHONY: all build test lint format
+.PHONY: all build test lint lint-fix install-hooks
 
 # Default target
 all: build
@@ -33,3 +33,23 @@ lint:
 	@echo "🔍 Running SwiftLint..."
 	@swiftlint --strict
 	@echo "✅ Linting complete."
+
+# Lint and auto-fix violations
+lint-fix:
+	@which swiftlint > /dev/null || { echo "⚠️  SwiftLint not installed. Skipping lint-fix."; exit 0; }
+	@echo "🔧 Running SwiftLint with auto-correction..."
+	@swiftlint --fix --format
+	@echo "✅ Auto-correction complete."
+
+# Install git hooks
+install-hooks:
+	@echo "📦 Installing git hooks..."
+	@if [ ! -d ".git" ]; then \
+		echo "❌ Not a git repository. Cannot install hooks."; \
+		exit 1; \
+	fi
+	@mkdir -p .git/hooks
+	@cp scripts/git-hooks/pre-commit .git/hooks/pre-commit
+	@chmod +x .git/hooks/pre-commit
+	@echo "✅ Git hooks installed successfully."
+	@echo "   Pre-commit hook will now auto-fix SwiftLint issues before each commit."

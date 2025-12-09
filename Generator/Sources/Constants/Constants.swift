@@ -1,5 +1,5 @@
 // ⚠️ SYNC: Keep in sync with:
-// - Plugins/ArrowPlugin/ArrowPlugin.swift
+// - arrow-generator-plugin/ArrowPlugin.swift
 // - Package.swift
 public enum Constants {
     public static let executableName = "arrow"
@@ -10,5 +10,8 @@ public enum Constants {
     public static let xcodeProjPathArgument = "xcode-proj-path"
     public static let generateCommand = "generate"
     public static let generatedFileName = "dependencies.generated.swift"
-    public static let namedMacro = "Named"
+    /// ⚠️ SYNC: Keep in sync with Arrow package [Arrow/Sources/Arrow/Named]
+    public static let namedProperty = "Named"
+    /// ⚠️ SYNC: Keep in sync with Arrow package [Arrow/Sources/ArrowMacros/Name]
+    public static let nameMacro = "Name"
 }

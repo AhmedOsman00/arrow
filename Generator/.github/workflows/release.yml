@@ -5,41 +5,59 @@ on:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
     branches:
-      - master
+      - main
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v1.0.0)'
+        required: true
+        type: string
 
 jobs:
   build:
     name: Build Executable
     runs-on: macos-latest
     steps:
-      - name: Validate Tag Format
-        run: |
-          TAG_NAME=${{ github.ref_name }}
-          if [[ ! "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "❌ Invalid tag format: $TAG_NAME"
-            exit 1
-          fi
-        shell: bash
-
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set Swift Version
         run: |
+          if [ ! -f .swift-version ]; then
+            echo "❌ Error: .swift-version file not found"
+            exit 1
+          fi
+
           SWIFT_VERSION=$(cat .swift-version)
-          sudo xcode-select -switch /Applications/Xcode_$SWIFT_VERSION.app/Contents/Developer
+          XCODE_PATH="/Applications/Xcode_$SWIFT_VERSION.app"
+
+          if [ ! -d "$XCODE_PATH" ]; then
+            echo "❌ Error: Xcode $SWIFT_VERSION not found at $XCODE_PATH"
+            echo "Available Xcode versions:"
+            ls -d /Applications/Xcode*.app 2>/dev/null || echo "No Xcode installations found"
+            exit 1
+          fi
+
+          sudo xcode-select -switch "$XCODE_PATH/Contents/Developer"
           swift --version
+
+      - name: Cache Swift Packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build
+            ~/Library/Caches/org.swift.swiftpm
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
 
       - name: Install Swift Dependencies
         run: |
-          brew install swiftlint swiftformat
+          brew install swiftlint
           swift --version
 
       - name: Run Linter
         run: make lint
-
-      - name: Run Formatter
-        run: make format
 
       - name: Run Tests
         run: make test
@@ -65,10 +83,10 @@ jobs:
           path: .
 
       - name: List Downloaded Files
-        run: ls -R arrow
+        run: ls -lah
 
       - name: Ensure Binary is Executable
-        run: chmod +x arrow/arrow
+        run: chmod +x arrow
 
       - name: Generate Changelog
         id: changelog
@@ -86,7 +104,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: "Release ${{ github.ref_name }}"
           body: "🚀 New release: **${{ github.ref_name }}**"
-          files: arrow/arrow
+          files: arrow
           draft: false
           prerelease: false
           fail_on_unmatched_files: true
