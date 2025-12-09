@@ -5,7 +5,7 @@ import PackageDescription
 
 // ⚠️ SYNC: Keep in sync with:
 // - Sources/Constants/Constants.swift
-// - Plugins/ArrowPlugin/ArrowPlugin.swift
+// - arrow-generator-plugin/ArrowPlugin.swift
 private let executableName = "arrow"
 
 let package = Package(

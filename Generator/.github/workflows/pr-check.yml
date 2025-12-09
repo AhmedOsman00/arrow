@@ -3,7 +3,7 @@ name: PR Quality Check
 on:
   pull_request:
     branches:
-      - master
+      - main
 
 jobs:
   quality-check:
@@ -12,24 +12,45 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set Swift Version
         run: |
+          if [ ! -f .swift-version ]; then
+            echo "❌ Error: .swift-version file not found"
+            exit 1
+          fi
+
           SWIFT_VERSION=$(cat .swift-version)
-          sudo xcode-select -switch /Applications/Xcode_$SWIFT_VERSION.app/Contents/Developer
+          XCODE_PATH="/Applications/Xcode_$SWIFT_VERSION.app"
+
+          if [ ! -d "$XCODE_PATH" ]; then
+            echo "❌ Error: Xcode $SWIFT_VERSION not found at $XCODE_PATH"
+            echo "Available Xcode versions:"
+            ls -d /Applications/Xcode*.app 2>/dev/null || echo "No Xcode installations found"
+            exit 1
+          fi
+
+          sudo xcode-select -switch "$XCODE_PATH/Contents/Developer"
           swift --version
+
+      - name: Cache Swift Packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build
+            ~/Library/Caches/org.swift.swiftpm
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
 
       - name: Install Swift Dependencies
         run: |
-          brew install swiftlint swiftformat
+          brew install swiftlint
           swift --version
 
       - name: Run Linter
         run: make lint
-
-      - name: Run Formatter
-        run: make format
 
       - name: Run Tests
         run: make test
