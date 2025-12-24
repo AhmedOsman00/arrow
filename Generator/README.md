@@ -24,7 +24,7 @@ This eliminates the tedious and error-prone task of manually writing dependency 
 ## Prerequisites
 
 - macOS 10.15 or later
-- Swift 6.2 or later
+- Swift 6.2.1 or later
 - Xcode (for Xcode project mode)
 
 ## Installation
@@ -49,12 +49,22 @@ brew upgrade arrow
 git clone <repository-url>
 cd arrow-generator
 
+# Automated setup (recommended) - installs all dependencies and configures environment
+make bootstrap
+
 # Build the project
 make build
 
 # The executable will be in bin/arrow
 ./bin/arrow --help
 ```
+
+**What `make bootstrap` does:**
+1. Checks for Homebrew (provides installation instructions if missing)
+2. Installs Mint and other tools from `Brewfile`
+3. Installs SwiftLint and other Swift tools from `Mintfile`
+4. Installs git hooks for automated linting
+5. Verifies your development environment
 
 ### Add to PATH (Optional)
 
@@ -325,7 +335,7 @@ Error: Circular dependency detected:
 
 ## Contributing
 
-Contributions are welcome! Please see our [Contributing Guide](docs/CONTRIBUTING.md) for details on:
+Contributions are welcome! Please see our [Contributing Guide](project-docs/CONTRIBUTING.md) for details on:
 
 - Development setup
 - Code style and standards

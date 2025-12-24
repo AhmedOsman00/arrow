@@ -1,5 +1,6 @@
-// swift-tools-version:6.2
+// swift-tools-version:6.0
 // The swift-tools-version declares the minimum version of Swift required to build this package.
+// Requires: Swift 6.0+ (Xcode 16.0+)
 
 import PackageDescription
 
@@ -10,6 +11,7 @@ private let executableName = "arrow"
 
 let package = Package(
     name: "ArrowGenerator",
+    // Minimum platform: macOS 10.15 (Catalina, 2019) - Supports most developer machines
     platforms: [
         .macOS(.v10_15)
     ],

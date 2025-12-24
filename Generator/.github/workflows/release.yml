@@ -3,43 +3,25 @@ name: Release
 on:
   push:
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
-    branches:
-      - main
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Release tag (e.g., v1.0.0)'
-        required: true
-        type: string
+      - '*.*.*'
 
 jobs:
-  build:
+  release:
     name: Build Executable
-    runs-on: macos-latest
+    runs-on: macos-14
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set Xcode Version
-        run: |
-          if [ ! -f .xcode-version ]; then
-            echo "❌ Error: .xcode-version file not found"
-            exit 1
-          fi
+      - name: Read Swift Version
+        id: swift-version
+        run: echo "version=$(cat .swift-version)" >> $GITHUB_OUTPUT
 
-          XCODE_VERSION=$(cat .xcode-version)
-          XCODE_PATH="/Applications/Xcode_$XCODE_VERSION.app"
-
-          if [ ! -d "$XCODE_PATH" ]; then
-            echo "❌ Error: Xcode $XCODE_VERSION not found at $XCODE_PATH"
-            echo "Available Xcode versions:"
-            ls -d /Applications/Xcode*.app 2>/dev/null || echo "No Xcode installations found"
-            exit 1
-          fi
-
-          sudo xcode-select -switch "$XCODE_PATH/Contents/Developer"
-          swift --version
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: ${{ steps.swift-version.outputs.version }}
 
       - name: Cache Swift Packages
         uses: actions/cache@v4
@@ -51,92 +33,52 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-spm-
 
-      - name: Install Swift Dependencies
-        run: |
-          brew install swiftlint
-          swift --version
-
-      - name: Run Linter
-        run: make lint
-
       - name: Run Tests
         run: make test
 
-      - name: Build Binary
+      - name: Build Release Binary
         run: make build
 
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: arrow
-          path: bin/arrow
-
-  upload:
-    name: Upload Release Artifacts
-    runs-on: ubuntu-latest
-    needs: [build]
-    steps:
-      - name: Download Build Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: arrow
-          path: .
-
-      - name: List Downloaded Files
-        run: ls -lah
-
-      - name: Ensure Binary is Executable
-        run: chmod +x arrow
-
-      - name: Generate Changelog
-        id: changelog
-        uses: metcalfc/changelog-generator@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          owner: ${{ github.repository_owner }}
-          repo: ${{ github.event.repository.name }}
-          tag: ${{ github.ref_name }}
+      - name: Verify Binary
+        run: |
+          echo "🔍 Verifying binary works..."
+          ./bin/arrow --version
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag_name: ${{ github.ref_name }}
-          name: "Release ${{ github.ref_name }}"
-          body: "🚀 New release: **${{ github.ref_name }}**"
-          files: arrow
-          draft: false
-          prerelease: false
+          files: bin/arrow
+          generate_release_notes: true
           fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   homebrew:
     name: Update Homebrew Formula
     runs-on: ubuntu-latest
-    needs: [upload]
+    needs: [release]
+
     steps:
       - name: Get Latest Release Info
         run: |
           TAG_NAME=${{ github.ref_name }}
-          BINARY_URL="https://github.com/AhmedOsman00/arrow-script/releases/download/${TAG_NAME}/arrow"
+          BINARY_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/arrow"
 
-          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+          echo "VERSION=$TAG_NAME" >> $GITHUB_ENV
           echo "BINARY_URL=$BINARY_URL" >> $GITHUB_ENV
 
-      - name: Download Latest Binary
+      - name: Download Binary and Calculate SHA-256
         run: |
           wget -O arrow "$BINARY_URL"
-
-      - name: Calculate SHA-256
-        run: |
           SHA256=$(shasum -a 256 arrow | awk '{print $1}')
           echo "SHA256=$SHA256" >> $GITHUB_ENV
 
-      - name: Bump Brew
+      - name: Update Homebrew Formula
         env:
           HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
-          brew tap AhmedOsman00/homebrew-tap
-          brew bump-formula-pr -f --version=$TAG_NAME --no-browse --no-audit \
+          brew tap ${{ github.repository_owner }}/homebrew-tap
+          brew bump-formula-pr -f --version=$VERSION --no-browse --no-audit \
             --sha256=$SHA256 \
-            --url="https://github.com/AhmedOsman00/arrow-script/releases/download/$TAG_NAME/arrow" \
-            AhmedOsman00/homebrew-tap/arrow
+            --url="$BINARY_URL" \
+            ${{ github.repository_owner }}/homebrew-tap/arrow

@@ -5,12 +5,12 @@
 
 set -e
 
-echo "🔧 Running SwiftLint auto-fix on staged files..."
+echo "🔧 Running swift-format and SwiftLint auto-fix on staged files..."
 
-# Check if swiftlint is installed
-if ! command -v swiftlint &> /dev/null; then
-    echo "⚠️  SwiftLint is not installed. Skipping auto-fix."
-    echo "Install it with: brew install swiftlint"
+# Check if mint is installed
+if ! command -v mint &> /dev/null; then
+    echo "⚠️  Mint is not installed. Skipping auto-fix."
+    echo "Install it with: brew install mint"
     exit 0
 fi
 
@@ -22,12 +22,17 @@ if [ -z "$STAGED_SWIFT_FILES" ]; then
     exit 0
 fi
 
-# Run SwiftLint fix on staged files
-echo "$STAGED_SWIFT_FILES" | xargs swiftlint --fix --format --quiet
+# Run swift-format on staged files (via Mint)
+echo "🎨 Running swift-format..."
+echo "$STAGED_SWIFT_FILES" | xargs mint run swift-format swift-format format --in-place
+
+# Run SwiftLint fix on staged files (via Mint)
+echo "🧹 Running SwiftLint auto-fix..."
+echo "$STAGED_SWIFT_FILES" | xargs mint run swiftlint swiftlint --fix --format --quiet
 
 # Re-add files that were auto-fixed
 echo "$STAGED_SWIFT_FILES" | xargs git add
 
-echo "✅ SwiftLint auto-fix complete. Modified files have been re-staged."
+echo "✅ Formatting and linting complete. Files re-staged."
 
 exit 0

@@ -25,3 +25,9 @@ Thumbs.db
 
 # Binary and executable output
 bin/
+
+# Generated documentation
+docs/
+
+# Generated Swift files
+Sources/Constants/Version.generated.swift

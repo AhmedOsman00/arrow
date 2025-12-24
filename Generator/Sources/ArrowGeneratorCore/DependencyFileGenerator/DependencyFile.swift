@@ -1,13 +1,41 @@
 import Foundation
 import SwiftSyntax
 
+/// Generates Swift source code for dependency registration using SwiftSyntax.
+///
+/// This class builds a complete Swift source file containing:
+/// - Import statements for all required modules
+/// - A `Container` extension with a `register()` method
+/// - Module instantiations
+/// - Dependency registration calls in topological order
+///
+/// The generated code follows this structure:
+/// ```swift
+/// import UIKit
+/// import Arrow
+///
+/// extension Container {
+///     func register() {
+///         let module = Module()
+///
+///         self.register(Type.self, name: "Type", objectScope: .transient) { resolver in
+///             module.provide(resolver.resolved(), a: resolver.resolved(), b: B())
+///         }
+///     }
+/// }
+/// ```
 class DependencyFile {
+    /// The presenter providing UI models for code generation
     private let presenter: DependencyFilePresenting
 
+    /// Initializes the code generator with a presenter
+    ///
+    /// - Parameter presenter: Presenter containing the file UI model
     init(presenter: DependencyFilePresenting) {
         self.presenter = presenter
     }
 
+    // Indentation and formatting tokens
     private let firstIntend = Trivia.spaces(4)
     private let secondIntend = Trivia.spaces(8)
     private let thirdIntend = Trivia.spaces(12)
@@ -34,6 +62,10 @@ class DependencyFile {
         }
      }
      */
+    /// The complete generated Swift source file
+    ///
+    /// This lazily computed property builds the entire syntax tree for the
+    /// generated `dependencies.generated.swift` file.
     lazy var file = SourceFileSyntax(statements: .init(createStatements()),
                                      endOfFileToken: .endOfFileToken())
     
