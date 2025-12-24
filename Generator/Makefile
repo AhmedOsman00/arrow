@@ -1,45 +1,129 @@
 # Variables
-SWIFT_FILES := $(wildcard *.swift)
 BUILD_DIR := .build
-OUTPUT := bin/arrow
-TEST_DIR := Tests
+OUTPUT_DIR := bin
+OUTPUT := $(OUTPUT_DIR)/arrow
+SWIFT_BUILD_FLAGS := -c release --arch x86_64 --arch arm64
 
-.PHONY: all build test lint lint-fix install-hooks
+.PHONY: all build test lint install-hooks clean bootstrap help docs generate-version
 
 # Default target
 all: build
 
-# Build the Swift script
-build:
-	@set -e
-	@echo "🔨 Building the Swift script..."
-	@swift build -c release --arch x86_64 --arch arm64
-	@BUILD_PATH=$$(swift build -c release --arch x86_64 --arch arm64 --show-bin-path); \
-	mkdir -p bin; \
-	cp "$$BUILD_PATH/arrow" "$(OUTPUT)"
+# Show available commands
+help:
+	@echo "Available targets:"
+	@echo ""
+	@echo "Setup:"
+	@echo "  make bootstrap     - Complete project setup (recommended for first-time setup)"
+	@echo "  make install-hooks - Install git pre-commit hooks"
+	@echo ""
+	@echo "Development:"
+	@echo "  make build         - Build universal release binary"
+	@echo "  make test          - Run test suite"
+	@echo "  make lint          - Run SwiftLint in strict mode"
+	@echo "  make generate-version - Generate version from git tags"
+	@echo ""
+	@echo "Other:"
+	@echo "  make docs          - Generate documentation"
+	@echo "  make clean         - Remove build artifacts"
+	@echo "  make all           - Build (default target)"
+
+# Complete development environment setup
+bootstrap:
+	@echo "🚀 Starting Arrow Generator development environment setup..."
+	@echo ""
+	@# Check for Homebrew
+	@if ! which brew > /dev/null 2>&1; then \
+		echo "❌ Homebrew not found."; \
+		echo ""; \
+		echo "Install Homebrew first:"; \
+		echo "  /bin/bash -c \"\$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""; \
+		echo ""; \
+		echo "Then run 'make bootstrap' again."; \
+		exit 1; \
+	fi
+	@echo "✅ Homebrew is installed"
+	@echo ""
+	@# Install Homebrew dependencies
+	@echo "📦 Installing Homebrew dependencies (Brewfile)..."
+	@brew bundle || { echo "❌ Failed to install Homebrew dependencies"; exit 1; }
+	@echo "✅ Homebrew dependencies installed"
+	@echo ""
+	@# Install Mint dependencies
+	@echo "📦 Installing Swift tool dependencies (Mintfile)..."
+	@mint bootstrap || { echo "❌ Failed to install Mint dependencies"; exit 1; }
+	@echo "✅ Mint dependencies installed"
+	@echo ""
+	@# Install git hooks
+	@$(MAKE) install-hooks
+	@echo ""
+	@# Verify environment
+	@echo "🔍 Verifying environment setup..."
+	@if which swift > /dev/null 2>&1; then \
+		SWIFT_VERSION=$$(swift --version | head -n1 | awk '{print $$4}'); \
+		EXPECTED_VERSION=$$(cat .swift-version 2>/dev/null || echo "unknown"); \
+		echo "✅ Swift: $$SWIFT_VERSION"; \
+		if [ "$$SWIFT_VERSION" != "$$EXPECTED_VERSION" ] && [ "$$EXPECTED_VERSION" != "unknown" ]; then \
+			echo "   ⚠️  Expected version: $$EXPECTED_VERSION"; \
+			echo "   ℹ️  Consider using 'xcodes' to manage Xcode versions"; \
+		fi; \
+	else \
+		echo "❌ Swift: Not found"; exit; \
+	fi
+	@echo ""
+	@echo "✅ Bootstrap complete! Your development environment is ready."
+	@echo ""
+	@echo "Next steps:"
+	@echo "  make build    - Build the project"
+	@echo "  make test     - Run tests"
+	@echo "  make help     - See all available commands"
+
+# Generate version from git tags
+generate-version:
+	@echo "🔢 Generating version from git tags..."
+	@./scripts/generate-version.sh
+
+# Build the Swift script (universal binary)
+build: generate-version
+	@echo "🔨 Building universal binary (x86_64 + arm64)..."
+	@swift build $(SWIFT_BUILD_FLAGS)
+	@mkdir -p $(OUTPUT_DIR)
+	@cp "$$(swift build $(SWIFT_BUILD_FLAGS) --show-bin-path)/arrow" "$(OUTPUT)"
+	@chmod +x "$(OUTPUT)"
 	@echo "✅ Build complete: $(OUTPUT)"
 
-# Test the Swift project (if Tests directory exists)
+# Run tests
 test:
-	@if [ -d "$(TEST_DIR)" ]; then \
-		echo "🧪 Running tests..." && swift test; \
-	else \
-		echo "❌ No Tests directory found. Skipping tests."; \
-	fi
+	@echo "🧪 Running tests..."
+	@swift test
+	@echo "✅ Tests passed."
 
-# Lint Swift files using SwiftLint
+# Lint Swift files using SwiftLint (via Mint)
 lint:
-	@which swiftlint > /dev/null || { echo "⚠️  SwiftLint not installed. Skipping lint."; exit 0; }
+	@which mint > /dev/null || { echo "⚠️  Mint not installed. Run: brew install mint"; exit 1; }
 	@echo "🔍 Running SwiftLint..."
-	@swiftlint --strict
+	@mint run swiftlint swiftlint --strict --reporter github-actions-logging
 	@echo "✅ Linting complete."
 
-# Lint and auto-fix violations
-lint-fix:
-	@which swiftlint > /dev/null || { echo "⚠️  SwiftLint not installed. Skipping lint-fix."; exit 0; }
-	@echo "🔧 Running SwiftLint with auto-correction..."
-	@swiftlint --fix --format
-	@echo "✅ Auto-correction complete."
+# Generate documentation
+docs:
+	@echo "📚 Generating documentation..."
+	@swift package --allow-writing-to-directory ./docs \
+		generate-documentation --target ArrowGeneratorCore \
+		--output-path ./docs \
+		--transform-for-static-hosting \
+		--hosting-base-path arrow-generator
+	@echo "✅ Documentation generated in ./docs"
+	@echo "   To preview: open ./docs/index.html"
+
+# Clean build artifacts
+clean:
+	@echo "🧹 Cleaning build artifacts..."
+	@rm -rf $(BUILD_DIR)
+	@rm -rf $(OUTPUT_DIR)
+	@rm -rf docs
+	@rm -f Sources/Constants/Version.generated.swift
+	@echo "✅ Clean complete."
 
 # Install git hooks
 install-hooks:
@@ -51,5 +135,5 @@ install-hooks:
 	@mkdir -p .git/hooks
 	@cp scripts/git-hooks/pre-commit .git/hooks/pre-commit
 	@chmod +x .git/hooks/pre-commit
-	@echo "✅ Git hooks installed successfully."
-	@echo "   Pre-commit hook will now auto-fix SwiftLint issues before each commit."
+	@echo "✅ Git hooks installed."
+	@echo "   Pre-commit hook will auto-fix SwiftLint issues before commits."
