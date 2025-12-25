@@ -37,20 +37,6 @@ jobs:
       - name: Run Tests
         run: make test
 
-  code-coverage:
-    name: Code Coverage
-    runs-on: macos-14
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Swift
-        uses: ./.github/actions/setup-swift
-
-      - name: Run tests with coverage
-        run: swift test --enable-code-coverage
-
       - name: Generate coverage report
         run: |
           xcrun llvm-cov export -format="lcov" \
