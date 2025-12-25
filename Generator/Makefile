@@ -95,7 +95,7 @@ build: generate-version
 # Run tests
 test:
 	@echo "🧪 Running tests..."
-	@swift test
+	@swift test --enable-code-coverage
 	@echo "✅ Tests passed."
 
 # Lint Swift files using SwiftLint (via Mint)
