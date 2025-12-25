@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Pre-commit hook for SwiftLint auto-fix
+# This hook runs SwiftLint with auto-fix before each commit
+
+set -e
+
+echo "🔧 Running swift-format and SwiftLint auto-fix on staged files..."
+
+# Check if mint is installed
+if ! command -v mint &> /dev/null; then
+    echo "⚠️  Mint is not installed. Skipping auto-fix."
+    echo "Install it with: brew install mint"
+    exit 0
+fi
+
+# Get list of staged Swift files
+STAGED_SWIFT_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep ".swift$" || true)
+
+if [ -z "$STAGED_SWIFT_FILES" ]; then
+    echo "✅ No Swift files to lint."
+    exit 0
+fi
+
+# Run swift-format on staged files (via Mint)
+echo "🎨 Running swift-format..."
+echo "$STAGED_SWIFT_FILES" | xargs mint run swift-format swift-format format --in-place
+
+# Run SwiftLint fix on staged files (via Mint)
+echo "🧹 Running SwiftLint auto-fix..."
+echo "$STAGED_SWIFT_FILES" | xargs mint run swiftlint swiftlint --fix --format --quiet
+
+# Re-add files that were auto-fixed
+echo "$STAGED_SWIFT_FILES" | xargs git add
+
+echo "✅ Formatting and linting complete. Files re-staged."
+
+exit 0

@@ -1,0 +1,24 @@
+# Swift Package Manager build artifacts
+.build/
+.swiftpm/
+
+# Xcode project/workspace settings
+*.xcworkspace/
+*.xcodeproj/
+*.xcodeproj/project.xcworkspace/
+.idea/
+.DS_Store
+
+# Derived Data and Index
+DerivedData/
+index/
+
+# User-specific Xcode settings
+xcuserdata/
+*.xcuserstate
+
+# macOS and Linux system files
+*.swp
+*.swo
+*.DS_Store
+Thumbs.db
