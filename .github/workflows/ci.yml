@@ -20,7 +20,7 @@ jobs:
       run: echo "version=$(cat .swift-version)" >> $GITHUB_OUTPUT
 
     - name: Setup Swift
-      uses: swift-actions/setup-swift@v2
+      uses: swift-actions/setup-swift@v3
       with:
         swift-version: ${{ steps.swift-version.outputs.version }}
 
