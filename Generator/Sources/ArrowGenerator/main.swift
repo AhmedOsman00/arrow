@@ -1,5 +1,5 @@
-import ArrowGeneratorCore
 import ArgumentParser
+import ArrowGeneratorCore
 import Constants
 
 /// Root command for the Arrow Generator CLI tool.
@@ -11,12 +11,12 @@ import Constants
 /// Available subcommands:
 /// - `generate`: Generates dependency registration code
 struct Arrow: ParsableCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "arrow",
-        abstract: "A Swift command-line tool to resolve, generate and add dependencies to container",
-        version: Constants.version,
-        subcommands: [DependencyRegistrationGenerator.self]
-    )
+  static let configuration = CommandConfiguration(
+    commandName: "arrow",
+    abstract: "A Swift command-line tool to resolve, generate and add dependencies to container",
+    version: Constants.version,
+    subcommands: [DependencyRegistrationGenerator.self]
+  )
 }
 
 Arrow.main()
