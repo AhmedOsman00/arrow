@@ -15,24 +15,16 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Read Swift Version
-        id: swift-version
-        run: echo "version=$(cat .swift-version)" >> $GITHUB_OUTPUT
-
       - name: Setup Swift
-        uses: swift-actions/setup-swift@v2
-        with:
-          swift-version: ${{ steps.swift-version.outputs.version }}
+        uses: ./.github/actions/setup-swift
 
-      - name: Cache Swift Packages
+      - name: Cache Mint
         uses: actions/cache@v4
         with:
-          path: |
-            .build
-            ~/Library/Caches/org.swift.swiftpm
-          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          path: ~/.mint
+          key: ${{ runner.os }}-mint-${{ hashFiles('**/Mintfile') }}
           restore-keys: |
-            ${{ runner.os }}-spm-
+            ${{ runner.os }}-mint-
 
       - name: Install Swift Dependencies
         run: |
@@ -50,8 +42,11 @@ jobs:
     runs-on: macos-14
 
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Setup Swift
+        uses: ./.github/actions/setup-swift
 
       - name: Run tests with coverage
         run: swift test --enable-code-coverage

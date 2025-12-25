@@ -14,24 +14,8 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Read Swift Version
-        id: swift-version
-        run: echo "version=$(cat .swift-version)" >> $GITHUB_OUTPUT
-
       - name: Setup Swift
-        uses: swift-actions/setup-swift@v2
-        with:
-          swift-version: ${{ steps.swift-version.outputs.version }}
-
-      - name: Cache Swift Packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            .build
-            ~/Library/Caches/org.swift.swiftpm
-          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
-          restore-keys: |
-            ${{ runner.os }}-spm-
+        uses: ./.github/actions/setup-swift
 
       - name: Run Tests
         run: make test
