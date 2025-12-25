@@ -24,7 +24,7 @@ fi
 
 # Run swift-format on staged files (via Mint)
 echo "🎨 Running swift-format..."
-echo "$STAGED_SWIFT_FILES" | xargs mint run swift-format swift-format format --in-place
+echo "$STAGED_SWIFT_FILES" | xargs swift format --in-place
 
 # Run SwiftLint fix on staged files (via Mint)
 echo "🧹 Running SwiftLint auto-fix..."
