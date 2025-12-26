@@ -1,13 +1,14 @@
 #!/bin/bash
 set -e
 
-# Script to generate version from git tags
-# This ensures the version is always in sync with git tags
 
 OUTPUT_FILE="Sources/Constants/Version.generated.swift"
 
-# Get the latest git tag, or fallback to "0.0.0-dev" if no tags are found
-VERSION=$(git describe --tags --dirty --always 2>/dev/null || echo "0.0.0-dev")
+# Version precedence:
+# 1. First CLI argument
+# 2. VERSION env var
+# 3. Fallback
+VERSION="${1:-${VERSION:-0.0.0-dev}}"
 
 # Generate Swift file
 cat > "$OUTPUT_FILE" << EOF
