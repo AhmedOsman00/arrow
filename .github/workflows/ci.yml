@@ -1,73 +1,45 @@
 name: CI
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
     branches: [ main ]
 
 jobs:
   lint-and-test:
     name: Build and Test
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v6
 
-    - name: Read Swift Version
-      id: swift-version
-      run: echo "version=$(cat .swift-version)" >> $GITHUB_OUTPUT
+      - name: Setup Swift
+        uses: ./.github/actions/setup-swift
 
-    - name: Setup Swift
-      uses: swift-actions/setup-swift@v2
-      with:
-        swift-version: ${{ steps.swift-version.outputs.version }}
+      - name: Cache Mint
+        uses: actions/cache@v5
+        with:
+          path: ~/.mint
+          key: ${{ runner.os }}-mint-${{ hashFiles('**/Mintfile') }}
+          restore-keys: |
+            ${{ runner.os }}-mint-
 
-    - name: Cache Swift Packages
-      uses: actions/cache@v4
-      with:
-        path: |
-          .build
-          ~/Library/Caches/org.swift.swiftpm
-        key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
-        restore-keys: |
-          ${{ runner.os }}-spm-
+      - name: Install Swift Dependencies
+        run: |
+          brew bundle
+          mint bootstrap
 
-    - name: Install Swift Dependencies
-      run: |
-        brew bundle
-        mint bootstrap
+      - name: Run Linter
+        run: make lint
 
-    - name: Run Linter
-      run: make lint
+      - name: Run Tests
+        run: make test
 
-    - name: Run Tests
-      run: make test
-
-  code-coverage:
-    name: Code Coverage
-    runs-on: macos-14
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Run tests with coverage
-      run: swift test --enable-code-coverage
-
-    - name: Generate coverage report
-      run: |
-        xcrun llvm-cov export -format="lcov" \
-          .build/debug/ArrowPackageTests.xctest/Contents/MacOS/ArrowPackageTests \
-          -instr-profile .build/debug/codecov/default.profdata > coverage.lcov
-      continue-on-error: true
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        files: ./coverage.lcov
-        fail_ci_if_error: false
-        verbose: true
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.lcov
+          fail_ci_if_error: false
+          verbose: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
