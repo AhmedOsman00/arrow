@@ -1,11 +1,11 @@
 protocol MoreManagerProtocol {
-    var id: String { get }
+  var id: String { get }
 }
 
 final class MoreManager: MoreManagerProtocol {
-    let id: String
+  let id: String
 
-    init(id: String) {
-        self.id = id
-    }
+  init(id: String) {
+    self.id = id
+  }
 }

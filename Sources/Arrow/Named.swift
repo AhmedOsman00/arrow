@@ -21,15 +21,15 @@
 /// ```
 @propertyWrapper
 public struct Named<T> {
-    public let wrappedValue: T
-    private let name: String
+  public let wrappedValue: T
+  private let name: String
 
-    /// Initialize the Named property wrapper with a value and name.
-    /// - Parameters:
-    ///   - wrappedValue: The actual value being wrapped
-    ///   - name: The name identifier for the dependency
-    public init(wrappedValue: T, _ name: String) {
-        self.wrappedValue = wrappedValue
-        self.name = name
-    }
+  /// Initialize the Named property wrapper with a value and name.
+  /// - Parameters:
+  ///   - wrappedValue: The actual value being wrapped
+  ///   - name: The name identifier for the dependency
+  public init(wrappedValue: T, _ name: String) {
+    self.wrappedValue = wrappedValue
+    self.name = name
+  }
 }

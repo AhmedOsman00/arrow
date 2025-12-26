@@ -11,28 +11,26 @@
 /// ```
 @propertyWrapper
 public struct Inject<T> {
-    private let name: String?
-    private let cache: Cache<T>
+  private let name: String?
+  private let cache: Cache<T>
 
-    public var wrappedValue: T {
-        get {
-            if let cached = cache.value {
-                return cached
-            }
-            let resolved = Container.shared.resolve(T.self, name: name)
-            cache.value = resolved
-            return resolved
-        }
+  public var wrappedValue: T {
+    if let cached = cache.value {
+      return cached
     }
+    let resolved = Container.shared.resolve(T.self, name: name)
+    cache.value = resolved
+    return resolved
+  }
 
-    public init(name: String? = nil) {
-        self.name = name
-        self.cache = Cache()
-    }
+  public init(name: String? = nil) {
+    self.name = name
+    self.cache = Cache()
+  }
 
-    private final class Cache<Value> {
-        var value: Value?
-    }
+  private final class Cache<Value> {
+    var value: Value?
+  }
 }
 
 public typealias Presenter = Inject

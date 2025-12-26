@@ -3,284 +3,284 @@ import XCTest
 
 // Test helpers
 protocol TestService {
-    var id: String { get }
+  var id: String { get }
 }
 
 final class TestServiceImpl: TestService {
-    let id: String
-    init(id: String = "default") {
-        self.id = id
-    }
+  let id: String
+  init(id: String = "default") {
+    self.id = id
+  }
 }
 
 final class TestCounter {
-    nonisolated(unsafe) static var creationCount = 0
+  nonisolated(unsafe) static var creationCount = 0
 
-    init() {
-        TestCounter.creationCount += 1
-    }
+  init() {
+    TestCounter.creationCount += 1
+  }
 
-    static func reset() {
-        creationCount = 0
-    }
+  static func reset() {
+    creationCount = 0
+  }
 }
 
 final class ContainerTests: XCTestCase {
+  override func setUp() {
+    super.setUp()
+    Container.shared.reset()
+    TestCounter.reset()
+  }
 
-    override func setUp() {
-        super.setUp()
-        Container.shared.reset()
-        TestCounter.reset()
+  override func tearDown() {
+    Container.shared.reset()
+    TestCounter.reset()
+    super.tearDown()
+  }
+
+  // MARK: - Registration Tests
+
+  func testRegisterAndResolveSimpleDependency() {
+    // Given
+    let expectedId = "test-service"
+    Container.shared.register(TestService.self) { _ in
+      TestServiceImpl(id: expectedId)
     }
 
-    override func tearDown() {
-        Container.shared.reset()
-        TestCounter.reset()
-        super.tearDown()
+    // When
+    let resolved: TestService = Container.shared.resolve(TestService.self)
+
+    // Then
+    XCTAssertEqual(resolved.id, expectedId)
+  }
+
+  // MARK: - Scope Tests
+
+  func testSingletonScopeCreatesOnlyOneInstance() {
+    // Given
+    Container.shared.register(TestCounter.self, objectScope: .singleton) { _ in
+      TestCounter()
     }
 
-    // MARK: - Registration Tests
+    // When
+    let first: TestCounter = Container.shared.resolve(TestCounter.self)
+    let second: TestCounter = Container.shared.resolved()
 
-    func testRegisterAndResolveSimpleDependency() {
-        // Given
-        let expectedId = "test-service"
-        Container.shared.register(TestService.self) { _ in
-            TestServiceImpl(id: expectedId)
-        }
+    // Then
+    XCTAssertTrue(first === second, "Singleton should return the same instance")
+    XCTAssertEqual(TestCounter.creationCount, 1, "Singleton should be created only once")
+  }
 
-        // When
-        let resolved: TestService = Container.shared.resolve(TestService.self)
-
-        // Then
-        XCTAssertEqual(resolved.id, expectedId)
+  func testTransientScopeCreatesNewInstanceEachTime() {
+    // Given
+    Container.shared.register(TestCounter.self, objectScope: .transient) { _ in
+      TestCounter()
     }
 
-    // MARK: - Scope Tests
+    // When
+    let first: TestCounter = Container.shared.resolve(TestCounter.self)
+    let second: TestCounter = Container.shared.resolve(TestCounter.self)
 
-    func testSingletonScopeCreatesOnlyOneInstance() {
-        // Given
-        Container.shared.register(TestCounter.self, objectScope: .singleton) { _ in
-            TestCounter()
-        }
+    // Then
+    XCTAssertFalse(first === second, "Transient should return different instances")
+    XCTAssertEqual(TestCounter.creationCount, 2, "Transient should be created each time")
+  }
 
-        // When
-        let first: TestCounter = Container.shared.resolve(TestCounter.self)
-        let second: TestCounter = Container.shared.resolved()
+  // MARK: - Named Dependencies Tests
 
-        // Then
-        XCTAssertTrue(first === second, "Singleton should return the same instance")
-        XCTAssertEqual(TestCounter.creationCount, 1, "Singleton should be created only once")
+  func testNamedDependenciesAreResolvedSeparately() {
+    // Given
+    Container.shared.register(TestService.self, name: "primary") { _ in
+      TestServiceImpl(id: "primary")
+    }
+    Container.shared.register(TestService.self, name: "secondary") { _ in
+      TestServiceImpl(id: "secondary")
     }
 
-    func testTransientScopeCreatesNewInstanceEachTime() {
-        // Given
-        Container.shared.register(TestCounter.self, objectScope: .transient) { _ in
-            TestCounter()
-        }
+    // When
+    let primary: TestService = Container.shared.resolve(TestService.self, name: "primary")
+    let secondary: TestService = Container.shared.resolve(TestService.self, name: "secondary")
 
-        // When
-        let first: TestCounter = Container.shared.resolve(TestCounter.self)
-        let second: TestCounter = Container.shared.resolve(TestCounter.self)
+    // Then
+    XCTAssertEqual(primary.id, "primary")
+    XCTAssertEqual(secondary.id, "secondary")
+  }
 
-        // Then
-        XCTAssertFalse(first === second, "Transient should return different instances")
-        XCTAssertEqual(TestCounter.creationCount, 2, "Transient should be created each time")
+  // MARK: - Error Handling Tests
+  func testTryResolveReturnsNilForMissingDependency() {
+    // When
+    let resolved: TestService? = Container.shared.tryResolve(TestService.self)
+
+    // Then
+    XCTAssertNil(resolved)
+  }
+
+  func testTryResolveReturnsValueForRegisteredDependency() {
+    // Given
+    Container.shared.register(TestService.self) { _ in
+      TestServiceImpl(id: "test")
     }
 
-    // MARK: - Named Dependencies Tests
+    // When
+    let resolved: TestService? = Container.shared.tryResolve(TestService.self)
 
-    func testNamedDependenciesAreResolvedSeparately() {
-        // Given
-        Container.shared.register(TestService.self, name: "primary") { _ in
-            TestServiceImpl(id: "primary")
-        }
-        Container.shared.register(TestService.self, name: "secondary") { _ in
-            TestServiceImpl(id: "secondary")
-        }
+    // Then
+    XCTAssertNotNil(resolved)
+    XCTAssertEqual(resolved?.id, "test")
+  }
 
-        // When
-        let primary: TestService = Container.shared.resolve(TestService.self, name: "primary")
-        let secondary: TestService = Container.shared.resolve(TestService.self, name: "secondary")
+  // MARK: - Unregister Tests
 
-        // Then
-        XCTAssertEqual(primary.id, "primary")
-        XCTAssertEqual(secondary.id, "secondary")
+  func testUnregisterRemovesDependency() {
+    // Given
+    Container.shared.register(TestService.self) { _ in
+      TestServiceImpl(id: "test")
     }
 
-    // MARK: - Error Handling Tests
-    func testTryResolveReturnsNilForMissingDependency() {
-        // When
-        let resolved: TestService? = Container.shared.tryResolve(TestService.self)
+    // When
+    Container.shared.unregister(TestService.self)
 
-        // Then
-        XCTAssertNil(resolved)
+    // Then
+    let resolved: TestService? = Container.shared.tryResolve(TestService.self)
+    XCTAssertNil(resolved)
+  }
+
+  func testUnregisterNamedDependency() {
+    // Given
+    Container.shared.register(TestService.self, name: "primary") { _ in
+      TestServiceImpl(id: "primary")
+    }
+    Container.shared.register(TestService.self, name: "secondary") { _ in
+      TestServiceImpl(id: "secondary")
     }
 
-    func testTryResolveReturnsValueForRegisteredDependency() {
-        // Given
-        Container.shared.register(TestService.self) { _ in
-            TestServiceImpl(id: "test")
-        }
+    // When
+    Container.shared.unregister(TestService.self, name: "primary")
 
-        // When
-        let resolved: TestService? = Container.shared.tryResolve(TestService.self)
+    // Then
+    let primary: TestService? = Container.shared.tryResolve(TestService.self, name: "primary")
+    let secondary: TestService? = Container.shared.tryResolve(TestService.self, name: "secondary")
 
-        // Then
-        XCTAssertNotNil(resolved)
-        XCTAssertEqual(resolved?.id, "test")
+    XCTAssertNil(primary)
+    XCTAssertNotNil(secondary)
+  }
+
+  func testResetRemovesAllDependencies() {
+    // Given
+    Container.shared.register(TestService.self, name: "first") { _ in
+      TestServiceImpl(id: "first")
+    }
+    Container.shared.register(TestService.self, name: "second") { _ in
+      TestServiceImpl(id: "second")
     }
 
-    // MARK: - Unregister Tests
+    // When
+    Container.shared.reset()
 
-    func testUnregisterRemovesDependency() {
-        // Given
-        Container.shared.register(TestService.self) { _ in
-            TestServiceImpl(id: "test")
-        }
+    // Then
+    let first: TestService? = Container.shared.tryResolve(TestService.self, name: "first")
+    let second: TestService? = Container.shared.tryResolve(TestService.self, name: "second")
 
-        // When
-        Container.shared.unregister(TestService.self)
+    XCTAssertNil(first)
+    XCTAssertNil(second)
+  }
 
-        // Then
-        let resolved: TestService? = Container.shared.tryResolve(TestService.self)
-        XCTAssertNil(resolved)
+  // MARK: - Property Wrapper Tests
+
+  func testInjectPropertyWrapperResolvesCorrectly() {
+    // Given
+    Container.shared.register(TestService.self) { _ in
+      TestServiceImpl(id: "injected")
     }
 
-    func testUnregisterNamedDependency() {
-        // Given
-        Container.shared.register(TestService.self, name: "primary") { _ in
-            TestServiceImpl(id: "primary")
-        }
-        Container.shared.register(TestService.self, name: "secondary") { _ in
-            TestServiceImpl(id: "secondary")
-        }
+    // When
+    class TestClass {
+      @Inject var service: TestService
+    }
+    let instance = TestClass()
 
-        // When
-        Container.shared.unregister(TestService.self, name: "primary")
+    // Then
+    XCTAssertEqual(instance.service.id, "injected")
+  }
 
-        // Then
-        let primary: TestService? = Container.shared.tryResolve(TestService.self, name: "primary")
-        let secondary: TestService? = Container.shared.tryResolve(TestService.self, name: "secondary")
-
-        XCTAssertNil(primary)
-        XCTAssertNotNil(secondary)
+  func testInjectPropertyWrapperCachesValue() {
+    // Given
+    Container.shared.register(TestCounter.self, objectScope: .transient) { _ in
+      TestCounter()
     }
 
-    func testResetRemovesAllDependencies() {
-        // Given
-        Container.shared.register(TestService.self, name: "first") { _ in
-            TestServiceImpl(id: "first")
-        }
-        Container.shared.register(TestService.self, name: "second") { _ in
-            TestServiceImpl(id: "second")
-        }
+    // When
+    class TestClass {
+      @Inject var counter: TestCounter
+    }
+    let instance = TestClass()
+    let first = instance.counter
+    let second = instance.counter
 
-        // When
-        Container.shared.reset()
+    // Then
+    XCTAssertTrue(first === second, "Property wrapper should cache the value")
+    XCTAssertEqual(TestCounter.creationCount, 1, "Should only resolve once")
+  }
 
-        // Then
-        let first: TestService? = Container.shared.tryResolve(TestService.self, name: "first")
-        let second: TestService? = Container.shared.tryResolve(TestService.self, name: "second")
+  func testAutowirePropertyWrapperReturnsNilForMissingDependency() {
+    // When
+    class TestClass {
+      @Autowire var service: TestService?
+    }
+    let instance = TestClass()
 
-        XCTAssertNil(first)
-        XCTAssertNil(second)
+    // Then
+    XCTAssertNil(instance.service)
+  }
+
+  func testAutowirePropertyWrapperResolvesRegisteredDependency() {
+    // Given
+    Container.shared.register(TestService.self) { _ in
+      TestServiceImpl(id: "autowired")
     }
 
-    // MARK: - Property Wrapper Tests
+    // When
+    class TestClass {
+      @Autowire var service: TestService?
+    }
+    let instance = TestClass()
 
-    func testInjectPropertyWrapperResolvesCorrectly() {
-        // Given
-        Container.shared.register(TestService.self) { _ in
-            TestServiceImpl(id: "injected")
-        }
+    // Then
+    XCTAssertNotNil(instance.service)
+    XCTAssertEqual(instance.service?.id, "autowired")
+  }
 
-        // When
-        class TestClass {
-            @Inject var service: TestService
-        }
-        let instance = TestClass()
+  func testAutowirePropertyWrapperCachesNil() {
+    // When
+    class TestClass {
+      @Autowire var counter: TestCounter?
+    }
+    let instance = TestClass()
 
-        // Then
-        XCTAssertEqual(instance.service.id, "injected")
+    // Access multiple times
+    let first = instance.counter
+    let second = instance.counter
+
+    // Then
+    XCTAssertNil(first)
+    XCTAssertNil(second)
+    XCTAssertEqual(TestCounter.creationCount, 0, "Should not create any instances")
+  }
+
+  func testNamedInjectPropertyWrapper() {
+    // Given
+    Container.shared.register(TestService.self, name: "custom") { _ in
+      TestServiceImpl(id: "custom-service")
     }
 
-    func testInjectPropertyWrapperCachesValue() {
-        // Given
-        Container.shared.register(TestCounter.self, objectScope: .transient) { _ in
-            TestCounter()
-        }
-
-        // When
-        class TestClass {
-            @Inject var counter: TestCounter
-        }
-        let instance = TestClass()
-        let first = instance.counter
-        let second = instance.counter
-
-        // Then
-        XCTAssertTrue(first === second, "Property wrapper should cache the value")
-        XCTAssertEqual(TestCounter.creationCount, 1, "Should only resolve once")
+    // When
+    class TestClass {
+      @Inject(name: "custom")
+      var service: TestService
     }
+    let instance = TestClass()
 
-    func testAutowirePropertyWrapperReturnsNilForMissingDependency() {
-        // When
-        class TestClass {
-            @Autowire var service: TestService?
-        }
-        let instance = TestClass()
-
-        // Then
-        XCTAssertNil(instance.service)
-    }
-
-    func testAutowirePropertyWrapperResolvesRegisteredDependency() {
-        // Given
-        Container.shared.register(TestService.self) { _ in
-            TestServiceImpl(id: "autowired")
-        }
-
-        // When
-        class TestClass {
-            @Autowire var service: TestService?
-        }
-        let instance = TestClass()
-
-        // Then
-        XCTAssertNotNil(instance.service)
-        XCTAssertEqual(instance.service?.id, "autowired")
-    }
-
-    func testAutowirePropertyWrapperCachesNil() {
-        // When
-        class TestClass {
-            @Autowire var counter: TestCounter?
-        }
-        let instance = TestClass()
-
-        // Access multiple times
-        let first = instance.counter
-        let second = instance.counter
-
-        // Then
-        XCTAssertNil(first)
-        XCTAssertNil(second)
-        XCTAssertEqual(TestCounter.creationCount, 0, "Should not create any instances")
-    }
-
-    func testNamedInjectPropertyWrapper() {
-        // Given
-        Container.shared.register(TestService.self, name: "custom") { _ in
-            TestServiceImpl(id: "custom-service")
-        }
-
-        // When
-        class TestClass {
-            @Inject(name: "custom") var service: TestService
-        }
-        let instance = TestClass()
-
-        // Then
-        XCTAssertEqual(instance.service.id, "custom-service")
-    }
+    // Then
+    XCTAssertEqual(instance.service.id, "custom-service")
+  }
 }

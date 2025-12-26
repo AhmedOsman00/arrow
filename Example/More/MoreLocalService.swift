@@ -1,15 +1,15 @@
 protocol Service {
-    func fetchData() async throws -> String
+  func fetchData() async throws -> String
 }
 
 final class MoreLocalService: Service {
-    let message: String
+  let message: String
 
-    init(message: String) {
-        self.message = message
-    }
+  init(message: String) {
+    self.message = message
+  }
 
-    func fetchData() async throws -> String {
-        "Data from \(type(of: self)): \(message)"
-    }
+  func fetchData() async throws -> String {
+    "Data from \(type(of: self)): \(message)"
+  }
 }

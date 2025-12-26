@@ -2,7 +2,7 @@
 ///
 /// Used as a constraint for module scope protocols to ensure modules can be instantiated.
 public protocol Default {
-    init()
+  init()
 }
 
 /// Marker protocol for modules that provide transient-scoped dependencies.
@@ -46,9 +46,9 @@ public protocol SingletonScope: Default {}
 /// - `singleton`: Instance created once during registration and cached for reuse
 /// - `transient`: New instance created on each resolution
 public enum DependencyScope {
-    /// Instance created once during registration and cached for reuse.
-    case singleton
+  /// Instance created once during registration and cached for reuse.
+  case singleton
 
-    /// New instance created on each resolution.
-    case transient
+  /// New instance created on each resolution.
+  case transient
 }

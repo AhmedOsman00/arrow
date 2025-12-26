@@ -31,4 +31,3 @@
 ///         reads the macro annotation to determine the registration name.
 @attached(peer)
 public macro Name(_ value: String) = #externalMacro(module: "Macros", type: "NameMacro")
-

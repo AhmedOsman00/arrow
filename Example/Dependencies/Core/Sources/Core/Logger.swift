@@ -1,17 +1,17 @@
 public protocol Logger {
-    func log(_ message: String)
+  func log(_ message: String)
 }
 
 public typealias LoggerFactory = (_ prefix: String) -> Logger
 
 final class ConsoleLogger: Logger {
-    let prefix: String
+  let prefix: String
 
-    init(prefix: String) {
-        self.prefix = prefix
-    }
+  init(prefix: String) {
+    self.prefix = prefix
+  }
 
-    func log(_ message: String) {
-        print("\(prefix) \(message)")
-    }
+  func log(_ message: String) {
+    print("\(prefix) \(message)")
+  }
 }
