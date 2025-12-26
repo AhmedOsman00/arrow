@@ -28,7 +28,7 @@ echo "$STAGED_SWIFT_FILES" | xargs swift format --in-place
 
 # Run SwiftLint fix on staged files (via Mint)
 echo "🧹 Running SwiftLint auto-fix..."
-echo "$STAGED_SWIFT_FILES" | xargs mint run swiftlint swiftlint --fix --format --quiet
+echo "$STAGED_SWIFT_FILES" | xargs mint run swiftlint swiftlint --quiet
 
 # Re-add files that were auto-fixed
 echo "$STAGED_SWIFT_FILES" | xargs git add

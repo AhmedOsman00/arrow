@@ -1,25 +1,23 @@
 name: CI
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
     branches: [ main ]
 
 jobs:
-  lint-and-test:
+  build-and-test:
     name: Build and Test
     runs-on: macos-14
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Swift
         uses: ./.github/actions/setup-swift
 
       - name: Cache Mint
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.mint
           key: ${{ runner.os }}-mint-${{ hashFiles('**/Mintfile') }}
@@ -37,15 +35,8 @@ jobs:
       - name: Run Tests
         run: make test
 
-      - name: Generate coverage report
-        run: |
-          xcrun llvm-cov export -format="lcov" \
-            .build/debug/ArrowPackageTests.xctest/Contents/MacOS/ArrowPackageTests \
-            -instr-profile .build/debug/codecov/default.profdata > coverage.lcov
-        continue-on-error: true
-
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: ./coverage.lcov
           fail_ci_if_error: false

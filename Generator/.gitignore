@@ -28,6 +28,3 @@ bin/
 
 # Generated documentation
 docs/
-
-# Generated Swift files
-Sources/Constants/Version.generated.swift

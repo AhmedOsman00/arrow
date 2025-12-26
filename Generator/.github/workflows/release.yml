@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - '*.*.*'
+      - 'v*.*.*'
 
 jobs:
   release:
@@ -12,7 +12,12 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+
+      - name: Generate Version File
+        run: |
+          VERSION="${{ github.ref_name }}"
+          ./scripts/generate-version.sh "$VERSION"
 
       - name: Setup Swift
         uses: ./.github/actions/setup-swift
