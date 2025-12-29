@@ -25,6 +25,3 @@ Thumbs.db
 
 # Binary and executable output
 bin/
-
-# Generated documentation
-docs/

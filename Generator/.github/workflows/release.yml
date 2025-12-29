@@ -5,22 +5,25 @@ on:
     tags:
       - 'v*.*.*'
 
+permissions:
+  contents: write
+
 jobs:
   release:
     name: Build Executable
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
 
+      - name: Setup Swift
+        uses: ./.github/actions/setup-swift
+
       - name: Generate Version File
         run: |
           VERSION="${{ github.ref_name }}"
-          ./scripts/generate-version.sh "$VERSION"
-
-      - name: Setup Swift
-        uses: ./.github/actions/setup-swift
+          make generate-version VERSION="$VERSION"
 
       - name: Run Tests
         run: make test
@@ -44,7 +47,7 @@ jobs:
 
   homebrew:
     name: Update Homebrew Formula
-    runs-on: ubuntu-latest
+    runs-on: macos-15
     needs: [release]
 
     steps:
