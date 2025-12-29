@@ -42,5 +42,6 @@ let package = Package(
     .testTarget(
       name: "ArrowGeneratorCoreTests",
       dependencies: ["ArrowGeneratorCore"]),
-  ]
+  ],
+  swiftLanguageModes: [.v6]
 )
