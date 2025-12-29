@@ -2,7 +2,8 @@ name: Documentation
 
 on:
   push:
-    branches: [ main ]
+    tags:
+      - 'v*.*.*'
 
 permissions:
   contents: read
@@ -16,41 +17,25 @@ concurrency:
 jobs:
   build-docs:
     name: Build Documentation
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v6
 
-    - name: Read Swift Version
-      id: swift-version
-      run: echo "version=$(cat .swift-version)" >> $GITHUB_OUTPUT
-
-    - name: Setup Swift
-      uses: swift-actions/setup-swift@v2
-      with:
-        swift-version: ${{ steps.swift-version.outputs.version }}
-
-    - name: Cache Swift Packages
-      uses: actions/cache@v4
-      with:
-        path: |
-          .build
-          ~/Library/Caches/org.swift.swiftpm
-        key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
-        restore-keys: |
-          ${{ runner.os }}-spm-
+      - name: Setup Swift
+        uses: ./.github/actions/setup-swift
   
-    - name: Setup Pages
-      uses: actions/configure-pages@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
-    - name: Build DocC
-      run: make docs
+      - name: Build DocC
+        run: make docs
 
-    - name: Upload artifact
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: ./docs
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ./docs
 
   deploy-docs:
     name: Deploy Documentation
@@ -61,6 +46,6 @@ jobs:
     needs: build-docs
 
     steps:
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

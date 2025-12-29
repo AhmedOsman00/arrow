@@ -22,3 +22,6 @@ xcuserdata/
 *.swo
 *.DS_Store
 Thumbs.db
+
+# Generated documentation
+docs/

@@ -84,7 +84,7 @@ build:
 # Run tests
 test:
 	@echo "🧪 Running tests..."
-	@swift test
+	@swift test --enable-code-coverage
 	@echo "✅ Tests passed."
 
 # Lint Swift files using SwiftLint (via Mint)
@@ -101,7 +101,7 @@ docs:
 		generate-documentation --target Arrow \
 		--output-path ./docs \
 		--transform-for-static-hosting \
-		--hosting-base-path arrow-generator
+		--hosting-base-path arrow
 	@echo "✅ Documentation generated in ./docs"
 	@echo "   To preview: open ./docs/index.html"
 
