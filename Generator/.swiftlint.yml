@@ -6,10 +6,10 @@
 included:
   - Sources
   - Plugins
-  - Tests
 
 # Paths to exclude from linting
 excluded:
+  - Tests
   - .build
   - .swiftpm
   - bin

@@ -1,21 +1,19 @@
 import Foundation
 
 struct DependencyUiModel {
-  let module: String
-  let type: String
-  let name: String
-  let block: String
-  let scope: String
-  let parameters: [Parameter]
+    let id: DependencyID
+    let module: String
+    let isFunc: Bool
+    let type: String
+    let name: String
+    let block: String
+    let scope: String
+    let parameters: [Parameter]
 
-  var id: String {
-    return "\(name):\(type)"
-  }
-
-  struct Parameter {
-    let name: String?
-    let value: String?
-    let id: String?
-    let isLast: Bool
-  }
+    struct Parameter {
+        let type: String
+        let label: String?
+        let id: String
+        let isLast: Bool
+    }
 }
