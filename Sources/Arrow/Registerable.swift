@@ -49,8 +49,8 @@ extension Registerable {
     unregister(type, name: name)
   }
 
-  func resolved<Dependency>() -> Dependency {
-    return resolve(Dependency.self)
+  public func resolved<Dependency>(name: String? = nil) -> Dependency {
+    return resolve(Dependency.self, name: name)
   }
 
   public func register() {}

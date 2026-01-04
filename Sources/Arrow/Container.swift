@@ -25,7 +25,7 @@ import Foundation
 public final class Container: Registerable {
   /// The shared singleton instance of the container.
   /// Exposed as `Registerable` protocol for better abstraction.
-  nonisolated(unsafe) public static let shared: Registerable = Container()
+  nonisolated(unsafe) public static let shared = Container()
 
   /// Internal storage for registered dependencies, keyed by type name or custom name.
   private var dependencies = [String: Any]()
