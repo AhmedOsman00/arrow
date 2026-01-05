@@ -120,12 +120,12 @@ private extension DependencyGraphResolver {
     }
 
     func validateNoDuplicateDependencies() throws {
-        var set = Set<String>()
-        let types = data.flatMap(\.types).map(\.id.rawValue)
+        var set = Set<DependencyID>()
+        let types = data.flatMap(\.types).map(\.id)
         let duplicateDependencies = types.filter { !set.insert($0).inserted }
 
         guard duplicateDependencies.isEmpty else {
-            throw DependencyError.duplicateDependencies(duplicateDependencies)
+            throw DependencyError.duplicateDependencies(duplicateDependencies.map(\.rawValue))
         }
     }
 }

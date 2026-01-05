@@ -1,0 +1,28 @@
+name: Mint Cache
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Mintfile'
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  cache-mint:
+    runs-on: macos-15
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Cache Mint
+        uses: actions/cache@v5
+        with:
+          path: ~/.mint
+          key: macOS-mint-${{ hashFiles('Mintfile') }}
+          restore-keys: macOS-mint-
+      
+      - name: Ensure Mint is installed
+        run: |
+          brew install mint
+          mint bootstrap

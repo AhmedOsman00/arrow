@@ -1,29 +1,47 @@
 import Foundation
+import PathKit
 import XcodeProj
 
 final class XcodeProjHandler {
     let swiftHandler: SwiftFilesHandlerProtocol
-    let xcodeProj: XcodeProjFile
     let generatedFileName: String
+    let logger: Logging
 
     init(
         swiftHandler: SwiftFilesHandlerProtocol,
-        xcodeProj: XcodeProjFile,
-        generatedFileName: String
+        generatedFileName: String,
+        logger: Logging
     ) {
         self.swiftHandler = swiftHandler
-        self.xcodeProj = xcodeProj
         self.generatedFileName = generatedFileName
+        self.logger = logger
     }
 
     func addDependenciesFileToXcodeProject(
         projRoot: String,
-        packageSourcesPaths: [String]
+        packageSourcesPaths: [String],
+        depsExtPath: String
     ) throws {
         let allPaths = packageSourcesPaths + [projRoot]
         let swiftFiles = try swiftHandler.getAllSwiftFiles(in: allPaths)
         let modules = try swiftHandler.parseSwiftFiles(swiftFiles)
         let file = try swiftHandler.generateDependenciesFile(modules: modules)
-        try xcodeProj.createFile(name: generatedFileName, content: file)
+
+        guard Path(depsExtPath).exists else {
+            throw ValidationError.fileNotFound
+        }
+
+        try file.write(toFile: depsExtPath, atomically: true, encoding: .utf8)
+    }
+
+    enum ValidationError: LocalizedError {
+        case fileNotFound
+
+        var errorDescription: String? {
+            switch self {
+            case .fileNotFound:
+                "dependencies.generated.swift file was not found. Please create it manually and add it to your project."
+            }
+        }
     }
 }
