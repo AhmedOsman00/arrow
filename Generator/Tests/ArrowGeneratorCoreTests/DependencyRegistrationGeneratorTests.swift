@@ -3,39 +3,26 @@ import XCTest
 @testable import ArrowGeneratorCore
 
 class DependencyRegistrationGeneratorTests: XCTestCase {
-    func testPackageMode_WhenPackageSourcesPathMissing_ThrowsValidationError() {
-        var generator = DependencyRegistrationGenerator()
-        generator.verbose = false
-        generator.isPackage = true
-        generator.packageSourcesPaths = []
-        XCTAssertThrowsError(try generator.run()) { error in
-            XCTAssertTrue(error is DependencyRegistrationGenerator.ValidationError)
-            XCTAssertEqual(error.localizedDescription, "Argument: --package-sources-path is required.")
-        }
+  func testPackageMode_WhenPackageSourcesPathMissing_ThrowsValidationError() {
+    var generator = DependencyRegistrationGenerator()
+    generator.verbose = false
+    generator.isPackage = true
+    generator.packageSourcesPaths = []
+    XCTAssertThrowsError(try generator.run()) { error in
+      XCTAssertTrue(error is DependencyRegistrationGenerator.ValidationError)
+      XCTAssertEqual(error.localizedDescription, "Argument: --package-path is required.")
     }
+  }
 
-    func testXcodeMode_WhenTargetNameMissing_ThrowsValidationError() {
-        var generator = DependencyRegistrationGenerator()
-        generator.verbose = false
-        generator.isPackage = false
-        generator.targetName = nil
+  func testXcodeMode_WhenProjRootMissing_ThrowsValidationError() {
+    var generator = DependencyRegistrationGenerator()
+    generator.verbose = false
+    generator.isPackage = false
+    generator.projRoot = nil
 
-        XCTAssertThrowsError(try generator.run()) { error in
-            XCTAssertTrue(error is DependencyRegistrationGenerator.ValidationError)
-            XCTAssertEqual(error.localizedDescription, "Argument: --target-name is required.")
-        }
+    XCTAssertThrowsError(try generator.run()) { error in
+      XCTAssertTrue(error is DependencyRegistrationGenerator.ValidationError)
+      XCTAssertEqual(error.localizedDescription, "Argument: --proj-root is required.")
     }
-
-    func testXcodeMode_WhenXcodeProjPathMissing_ThrowsValidationError() {
-        var generator = DependencyRegistrationGenerator()
-        generator.verbose = false
-        generator.isPackage = false
-        generator.targetName = "Main"
-        generator.xcodeProjPath = nil
-
-        XCTAssertThrowsError(try generator.run()) { error in
-            XCTAssertTrue(error is DependencyRegistrationGenerator.ValidationError)
-            XCTAssertEqual(error.localizedDescription, "Argument: --xcode-proj-path is required.")
-        }
-    }
+  }
 }

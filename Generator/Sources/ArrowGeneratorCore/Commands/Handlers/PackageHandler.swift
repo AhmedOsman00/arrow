@@ -4,13 +4,16 @@ import PathKit
 final class PackageHandler {
     let swiftHandler: SwiftFilesHandlerProtocol
     let generatedFileName: String
+    let logger: Logging
 
     init(
         swiftHandler: SwiftFilesHandlerProtocol,
-        generatedFileName: String
+        generatedFileName: String,
+        logger: Logging
     ) {
         self.swiftHandler = swiftHandler
         self.generatedFileName = generatedFileName
+        self.logger = logger
     }
 
     func addDependenciesFileToSwiftPackage(packageSourcesPath: String) throws {
