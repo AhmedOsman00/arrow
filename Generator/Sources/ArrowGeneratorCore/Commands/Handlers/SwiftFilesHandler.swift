@@ -58,12 +58,10 @@ final class SwiftFilesHandler: SwiftFilesHandlerProtocol {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
     process.arguments = [
-      "git",
-      "ls-files",
-      "*.swift",
-      "--cached",
-      "--others",
-      "--exclude-standard",
+      "sh",
+      "-c",
+      // swiftlint:disable:next line_length
+      "set -e; set -o pipefail; git ls-files '*.swift' --cached --others --exclude-standard | while read -r file; do [ -f \"$file\" ] && echo \"$file\"; done",
     ]
 
     process.currentDirectoryURL = URL(fileURLWithPath: repoPath.string)
@@ -90,6 +88,7 @@ final class SwiftFilesHandler: SwiftFilesHandlerProtocol {
       output
       .split(separator: "\n")
       .map(String.init)
+      .filter { !$0.isEmpty }
       .map { "\(repoPath)/\($0)" }
   }
 
