@@ -13,18 +13,9 @@ jobs:
     name: Build Executable
     runs-on: macos-15
 
-    outputs:
-      version: ${{ steps.version-info.outputs.version }}
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
-
-      - name: Compute Version
-        id: version-info
-        run: |
-          TAG_NAME="${{ github.ref_name }}"
-          echo "version=${TAG_NAME#v}" >> "$GITHUB_OUTPUT"
 
       - name: Setup Swift
         uses: ./.github/actions/setup-swift
@@ -34,7 +25,7 @@ jobs:
 
       - name: Generate Version File
         run: |
-          make generate-version VERSION="${{ steps.version-info.outputs.version }}"
+          make generate-version VERSION="${{ github.ref_name }}"
 
       - name: Build Release Binary
         run: make build
@@ -61,9 +52,8 @@ jobs:
     steps:
       - name: Get Latest Release Info
         run: |
-          VERSION="${{ needs.release.outputs.version }}"
-          TAG_NAME="v$VERSION"
-          BINARY_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/arrow"
+          VERSION="${{ github.ref_name }}"
+          BINARY_URL="https://github.com/${{ github.repository }}/releases/download/${VERSION}/arrow"
 
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "BINARY_URL=$BINARY_URL" >> $GITHUB_ENV
