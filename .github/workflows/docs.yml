@@ -27,7 +27,7 @@ jobs:
         uses: ./.github/actions/setup-swift
   
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Build DocC
         run: make docs
