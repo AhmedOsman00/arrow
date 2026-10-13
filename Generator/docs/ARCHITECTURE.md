@@ -58,13 +58,13 @@ The tool supports two operational modes:
 
 #### Xcode Project Mode
 - Uses `XcodeFileParser` to extract Swift files from `.xcodeproj`
-- Automatically adds generated file to the project
-- Supports additional package sources via `--package-sources-path`
+- Overwrites an existing `dependencies.generated.swift` (it never edits the `.xcodeproj`)
+- Supports additional package sources via `--package-path`
 
 #### Swift Package Mode
 - Directly scans a sources directory
 - Does not modify any project files
-- Typically invoked via the [Arrow Generator Plugin](https://github.com/AhmedOsman00/arrow-generator-plugin)
+- Invoked directly with `arrow generate --is-package --package-path <path>`
 
 ## Core Components
 
@@ -360,7 +360,7 @@ To customize generated code structure:
 
 The tool can be integrated into:
 - **Xcode build phases**: Run script phase calling `arrow generate`
-- **Swift Package plugins**: Use the [Arrow Generator Plugin](https://github.com/AhmedOsman00/arrow-generator-plugin)
+- **Swift Packages**: Run `arrow generate --is-package` from a Makefile target or script
 - **CI/CD pipelines**: Validate generated code is up-to-date
 - **Pre-commit hooks**: Auto-generate on file changes
 
@@ -403,4 +403,3 @@ The codebase uses different test types for different components:
 
 - [README.md](README.md): User-facing documentation and usage
 - [Arrow Framework](https://github.com/AhmedOsman00/Arrow): The DI framework this tool supports
-- [Arrow Generator Plugin](https://github.com/AhmedOsman00/arrow-generator-plugin): SPM plugin wrapper

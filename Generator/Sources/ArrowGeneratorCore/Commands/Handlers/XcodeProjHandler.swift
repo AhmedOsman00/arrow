@@ -1,6 +1,5 @@
 import Foundation
 import PathKit
-import XcodeProj
 
 final class XcodeProjHandler {
   let swiftHandler: SwiftFilesHandlerProtocol

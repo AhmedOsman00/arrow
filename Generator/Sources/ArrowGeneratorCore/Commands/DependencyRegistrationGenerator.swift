@@ -4,7 +4,6 @@ import Foundation
 import PathKit
 import SwiftParser
 import SwiftSyntax
-import XcodeProj
 
 /// Command to generate dependency registration code for Arrow DI framework.
 ///
@@ -12,13 +11,13 @@ import XcodeProj
 /// two modes of operation:
 ///
 /// **Xcode Project Mode** (default):
-/// - Parses an Xcode project file to find Swift sources
+/// - Scans the project root (and any `--package-path`) for Swift sources
 /// - Generates registration code
-/// - Automatically adds the generated file to the Xcode project
+/// - Overwrites an existing `dependencies.generated.swift` (the project file is never modified)
 ///
 /// **Swift Package Mode** (`--is-package` flag):
-/// - Scans a sources directory for Swift files
-/// - Generates registration code in the sources directory
+/// - Scans one or more sources directories for Swift files
+/// - Generates registration code in the first sources directory
 /// - Does not modify any project files
 ///
 /// The tool performs these steps:
@@ -30,10 +29,10 @@ import XcodeProj
 /// Example usage:
 /// ```bash
 /// # Xcode project
-/// arrow generate --xcode-proj-path App.xcodeproj --target-name MyApp
+/// arrow generate --proj-root /path/to/App
 ///
 /// # Swift package
-/// arrow generate --is-package --package-sources-path Sources/MyPackage
+/// arrow generate --is-package --package-path Sources/MyPackage
 /// ```
 public struct DependencyRegistrationGenerator: ParsableCommand {
   public static let configuration = CommandConfiguration(
@@ -46,7 +45,7 @@ public struct DependencyRegistrationGenerator: ParsableCommand {
 
   @Flag(
     name: .customShort(Constants.verbose),
-    help: "Enable Swift Package mode instead of Xcode project mode")
+    help: "Enable verbose logging")
   var verbose: Bool = false
 
   @Flag(
@@ -68,7 +67,7 @@ public struct DependencyRegistrationGenerator: ParsableCommand {
     name: .customLong(Constants.packageSourcesPathArgument),
     help:
       // swiftlint:disable:next line_length
-      "Path to Swift Package sources directory. Use path/** to find all 'Sources' directories recursively, or provide direct path to a Sources directory (can be specified multiple times)"
+      "Path to a Swift Package sources directory (can be specified multiple times). In package mode the generated file is written to the first path"
   )
   var packageSourcesPaths: [String] = []
 
@@ -77,7 +76,7 @@ public struct DependencyRegistrationGenerator: ParsableCommand {
     let swiftHandler = SwiftFilesHandler(logger: logger)
 
     guard !isPackage else {
-      guard let packageSourcesPath = packageSourcesPaths.first else {
+      guard !packageSourcesPaths.isEmpty else {
         throw ValidationError.missingArgument(Constants.packageSourcesPathArgument)
       }
 
@@ -85,7 +84,7 @@ public struct DependencyRegistrationGenerator: ParsableCommand {
         swiftHandler: swiftHandler,
         generatedFileName: Constants.generatedFileName,
         logger: logger)
-      return try packageHandler.addDependenciesFileToSwiftPackage(packageSourcesPath: packageSourcesPath)
+      return try packageHandler.addDependenciesFileToSwiftPackage(packageSourcesPaths: packageSourcesPaths)
     }
 
     guard

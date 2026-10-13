@@ -3,99 +3,158 @@ import XCTest
 @testable import ArrowGeneratorCore
 
 final class SwiftFilesHandlerTests: XCTestCase {
-    var sut: SwiftFilesHandler!
+  var sut: SwiftFilesHandler!
 
-    override func setUp() {
-        super.setUp()
-        sut = SwiftFilesHandler(logger: LoggingMock())
+  override func setUp() {
+    super.setUp()
+    sut = SwiftFilesHandler(logger: LoggingMock())
+  }
+
+  override func tearDown() {
+    sut = nil
+    super.tearDown()
+  }
+
+  func testGetAllSwiftFiles_WithEmptyDirectories_ReturnsEmptySet() throws {
+    let result = try sut.getAllSwiftFiles(in: [])
+
+    XCTAssertTrue(result.isEmpty)
+  }
+
+  func testGetAllSwiftFiles_WithValidDirectory_ReturnsSwiftFiles() throws {
+    let tempDir = createTempDirectory()
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    // Create test Swift files
+    try createFile(at: tempDir, name: "File1.swift", content: "import Foundation")
+    try createFile(at: tempDir, name: "File2.swift", content: "class Test {}")
+    try createFile(at: tempDir, name: "NotSwift.txt", content: "text")
+
+    let result = try sut.getAllSwiftFiles(in: [tempDir.path])
+
+    XCTAssertEqual(result.count, 2)
+    XCTAssertTrue(result.contains { $0.hasSuffix("File1.swift") })
+    XCTAssertTrue(result.contains { $0.hasSuffix("File2.swift") })
+    XCTAssertFalse(result.contains { $0.hasSuffix("NotSwift.txt") })
+  }
+
+  func testGetAllSwiftFiles_WithNestedDirectories_ReturnsAllSwiftFiles() throws {
+    let tempDir = createTempDirectory()
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    let subDir = tempDir.appendingPathComponent("SubDir")
+    try FileManager.default.createDirectory(at: subDir, withIntermediateDirectories: true)
+
+    try createFile(at: tempDir, name: "Root.swift", content: "// root")
+    try createFile(at: subDir, name: "Nested.swift", content: "// nested")
+
+    let result = try sut.getAllSwiftFiles(in: [tempDir.path])
+
+    XCTAssertEqual(result.count, 2)
+    XCTAssertTrue(result.contains { $0.hasSuffix("Root.swift") })
+    XCTAssertTrue(result.contains { $0.hasSuffix("Nested.swift") })
+  }
+
+  func testGetAllSwiftFiles_WithMultipleDirectories_CombinesResults() throws {
+    let tempDir1 = createTempDirectory()
+    let tempDir2 = createTempDirectory()
+    defer {
+      try? FileManager.default.removeItem(at: tempDir1)
+      try? FileManager.default.removeItem(at: tempDir2)
     }
 
-    override func tearDown() {
-        sut = nil
-        super.tearDown()
+    try createFile(at: tempDir1, name: "File1.swift", content: "// 1")
+    try createFile(at: tempDir2, name: "File2.swift", content: "// 2")
+
+    let result = try sut.getAllSwiftFiles(in: [tempDir1.path, tempDir2.path])
+
+    XCTAssertEqual(result.count, 2)
+    XCTAssertTrue(result.contains { $0.hasSuffix("File1.swift") })
+    XCTAssertTrue(result.contains { $0.hasSuffix("File2.swift") })
+  }
+
+  func testGetAllSwiftFiles_WithNonExistentDirectory_HandlesGracefully() throws {
+    let result = try sut.getAllSwiftFiles(in: ["/non/existent/path"])
+
+    XCTAssertTrue(result.isEmpty)
+  }
+
+  func testGetAllSwiftFiles_WithoutGit_SkipsBuildAndHiddenDirectories() throws {
+    let tempDir = createTempDirectory()
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    for directory in [".build", "DerivedData", ".hidden"] {
+      let url = tempDir.appendingPathComponent(directory)
+      try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+      try createFile(at: url, name: "Skipped.swift", content: "// skipped")
     }
+    try createFile(at: tempDir, name: "Kept.swift", content: "// kept")
 
-    func testGetAllSwiftFiles_WithEmptyDirectories_ReturnsEmptySet() throws {
-        let result = try sut.getAllSwiftFiles(in: [])
+    let result = try sut.getAllSwiftFiles(in: [tempDir.path])
 
-        XCTAssertTrue(result.isEmpty)
-    }
+    XCTAssertEqual(result.count, 1)
+    XCTAssertTrue(result.contains { $0.hasSuffix("Kept.swift") })
+  }
 
-    func testGetAllSwiftFiles_WithValidDirectory_ReturnsSwiftFiles() throws {
-        let tempDir = createTempDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+  func testGetAllSwiftFiles_InGitRepo_RespectsIgnoreAndSkipsDeletedFiles() throws {
+    let tempDir = createTempDirectory()
+    defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        // Create test Swift files
-        try createFile(at: tempDir, name: "File1.swift", content: "import Foundation")
-        try createFile(at: tempDir, name: "File2.swift", content: "class Test {}")
-        try createFile(at: tempDir, name: "NotSwift.txt", content: "text")
+    try git(["init", "-q"], in: tempDir)
+    try createFile(at: tempDir, name: ".gitignore", content: "Ignored.swift\n")
+    try createFile(at: tempDir, name: "A.swift", content: "// a")
+    try createFile(at: tempDir, name: "Z.swift", content: "// z")
+    try createFile(at: tempDir, name: "Ignored.swift", content: "// ignored")
+    try git(["add", "A.swift", "Z.swift"], in: tempDir)
+    // Tracked but deleted, and listed last by git.
+    try FileManager.default.removeItem(at: tempDir.appendingPathComponent("Z.swift"))
 
-        let result = try sut.getAllSwiftFiles(in: [tempDir.path])
+    let result = try sut.getAllSwiftFiles(in: [tempDir.path])
 
-        XCTAssertEqual(result.count, 2)
-        XCTAssertTrue(result.contains { $0.hasSuffix("File1.swift") })
-        XCTAssertTrue(result.contains { $0.hasSuffix("File2.swift") })
-        XCTAssertFalse(result.contains { $0.hasSuffix("NotSwift.txt") })
-    }
+    // Ignored.swift being absent shows git was used rather than the directory walk.
+    XCTAssertEqual(result.map { URL(fileURLWithPath: $0).lastPathComponent }, ["A.swift"])
+  }
 
-    func testGetAllSwiftFiles_WithNestedDirectories_ReturnsAllSwiftFiles() throws {
-        let tempDir = createTempDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+  func testGetAllSwiftFiles_WithOverlappingDirectories_ReturnsEachFileOnce() throws {
+    let tempDir = createTempDirectory()
+    defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let subDir = tempDir.appendingPathComponent("SubDir")
-        try FileManager.default.createDirectory(at: subDir, withIntermediateDirectories: true)
+    let subDir = tempDir.appendingPathComponent("Sources")
+    try FileManager.default.createDirectory(at: subDir, withIntermediateDirectories: true)
+    try createFile(at: subDir, name: "Module.swift", content: "// module")
 
-        try createFile(at: tempDir, name: "Root.swift", content: "// root")
-        try createFile(at: subDir, name: "Nested.swift", content: "// nested")
+    let result = try sut.getAllSwiftFiles(in: [tempDir.path + "/.", subDir.path])
 
-        let result = try sut.getAllSwiftFiles(in: [tempDir.path])
+    XCTAssertEqual(result.count, 1)
+  }
 
-        XCTAssertEqual(result.count, 2)
-        XCTAssertTrue(result.contains { $0.hasSuffix("Root.swift") })
-        XCTAssertTrue(result.contains { $0.hasSuffix("Nested.swift") })
-    }
+  // MARK: - Helper Methods
 
-    func testGetAllSwiftFiles_WithMultipleDirectories_CombinesResults() throws {
-        let tempDir1 = createTempDirectory()
-        let tempDir2 = createTempDirectory()
-        defer {
-            try? FileManager.default.removeItem(at: tempDir1)
-            try? FileManager.default.removeItem(at: tempDir2)
-        }
+  private func git(_ arguments: [String], in directory: URL) throws {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+    process.arguments = ["git"] + arguments
+    process.currentDirectoryURL = directory
+    try process.run()
+    process.waitUntilExit()
+    XCTAssertEqual(process.terminationStatus, 0, "git \(arguments.joined(separator: " ")) failed")
+  }
 
-        try createFile(at: tempDir1, name: "File1.swift", content: "// 1")
-        try createFile(at: tempDir2, name: "File2.swift", content: "// 2")
+  private func createTempDirectory() -> URL {
+    let tempDir = FileManager.default.temporaryDirectory
+      .appendingPathComponent(UUID().uuidString)
+    try! FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    return tempDir
+  }
 
-        let result = try sut.getAllSwiftFiles(in: [tempDir1.path, tempDir2.path])
-
-        XCTAssertEqual(result.count, 2)
-        XCTAssertTrue(result.contains { $0.hasSuffix("File1.swift") })
-        XCTAssertTrue(result.contains { $0.hasSuffix("File2.swift") })
-    }
-
-    func testGetAllSwiftFiles_WithNonExistentDirectory_HandlesGracefully() throws {
-        let result = try sut.getAllSwiftFiles(in: ["/non/existent/path"])
-
-        XCTAssertTrue(result.isEmpty)
-    }
-
-    // MARK: - Helper Methods
-
-    private func createTempDirectory() -> URL {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        try! FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        return tempDir
-    }
-
-    @discardableResult
-    private func createFile(at directory: URL, name: String, content: String) throws -> URL {
-        let fileURL = directory.appendingPathComponent(name)
-        try content.write(to: fileURL, atomically: true, encoding: .utf8)
-        return fileURL
-    }
+  @discardableResult
+  private func createFile(at directory: URL, name: String, content: String) throws -> URL {
+    let fileURL = directory.appendingPathComponent(name)
+    try content.write(to: fileURL, atomically: true, encoding: .utf8)
+    return fileURL
+  }
 }
 
 final class LoggingMock: Logging {
-    func log(_ message: String) {}
+  func log(_ message: String) {}
 }

@@ -10,17 +10,12 @@ protocol SwiftFilesHandlerProtocol {
 }
 
 final class SwiftFilesHandler: SwiftFilesHandlerProtocol {
-  let parser: Parser.Type
-  let syntaxVisitor: DependencyModulesParser
+  /// Directories that never contain project sources; skipped when walking the file system.
+  static let skippedDirectories: Set<String> = [".build", "DerivedData", "Pods", "Carthage"]
+
   let logger: Logging
 
-  init(
-    parser: Parser.Type = Parser.self,
-    syntaxVisitor: DependencyModulesParser = DependencyModulesParser(viewMode: .all),
-    logger: Logging
-  ) {
-    self.parser = parser
-    self.syntaxVisitor = syntaxVisitor
+  init(logger: Logging) {
     self.logger = logger
   }
 
@@ -39,13 +34,15 @@ final class SwiftFilesHandler: SwiftFilesHandlerProtocol {
         }
 
         do {
-          return try swiftFilesRecursivelly(in: path)
+          return try swiftFilesRecursively(in: path)
         } catch {
           logger.log("⚠️  Failed to read directory: \(path.string) - \(error.localizedDescription)")
           return nil
         }
       }
       .flatMap { $0 }
+      // Overlapping inputs (e.g. `.` and `Package/Sources`) must not yield the same file twice.
+      .map { URL(fileURLWithPath: $0).standardizedFileURL.path }
       .asSet()
 
     logger.log("✅ Found \(swiftFiles.count) Swift files")
@@ -57,13 +54,7 @@ final class SwiftFilesHandler: SwiftFilesHandlerProtocol {
   func swiftFilesUsingGit(in repoPath: Path) throws -> [String] {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-    process.arguments = [
-      "sh",
-      "-c",
-      // swiftlint:disable:next line_length
-      "set -e; set -o pipefail; git ls-files '*.swift' --cached --others --exclude-standard | while read -r file; do [ -f \"$file\" ] && echo \"$file\"; done",
-    ]
-
+    process.arguments = ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "*.swift"]
     process.currentDirectoryURL = URL(fileURLWithPath: repoPath.string)
 
     let pipe = Pipe()
@@ -73,42 +64,65 @@ final class SwiftFilesHandler: SwiftFilesHandlerProtocol {
     process.standardError = errorPipe
 
     try process.run()
+
+    // Read before waiting: a full pipe buffer would otherwise block git and hang forever.
+    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+    let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
     process.waitUntilExit()
 
     guard process.terminationStatus == 0 else {
-      let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
       let errorMessage = String(data: errorData, encoding: .utf8)
       throw ValidationError.git(repoPath.string, errorMessage ?? "")
     }
 
-    let data = pipe.fileHandleForReading.readDataToEndOfFile()
     let output = String(data: data, encoding: .utf8) ?? ""
 
     return
       output
-      .split(separator: "\n")
-      .map(String.init)
-      .filter { !$0.isEmpty }
+      .split(separator: "\0")
       .map { "\(repoPath)/\($0)" }
+      // Tracked files deleted from the working tree are still listed by git.
+      .filter { FileManager.default.fileExists(atPath: $0) }
   }
 
-  func swiftFilesRecursivelly(in path: Path) throws -> [String] {
-    try path.recursiveChildren()
-      .filter { $0.extension == "swift" }
-      .map { $0.string }
+  func swiftFilesRecursively(in path: Path) throws -> [String] {
+    var isDirectory: ObjCBool = false
+    guard FileManager.default.fileExists(atPath: path.string, isDirectory: &isDirectory), isDirectory.boolValue
+    else {
+      throw CocoaError(.fileReadNoSuchFile, userInfo: [NSFilePathErrorKey: path.string])
+    }
+
+    let root = URL(fileURLWithPath: path.string)
+    guard
+      let enumerator = FileManager.default.enumerator(
+        at: root,
+        includingPropertiesForKeys: [.isDirectoryKey],
+        options: [.skipsHiddenFiles])
+    else { return [] }
+
+    var files = [String]()
+    for case let url as URL in enumerator {
+      if Self.skippedDirectories.contains(url.lastPathComponent) {
+        enumerator.skipDescendants()
+      } else if url.pathExtension == "swift" {
+        files.append(url.path)
+      }
+    }
+    return files
   }
 
   func parseSwiftFiles(_ swiftFiles: Set<String>) throws -> [DependencyModule] {
     logger.log("📝 Starting to parse \(swiftFiles.count) Swift files")
 
-    return try swiftFiles.flatMap {
+    // Sorted so the generated file is identical between runs.
+    return try swiftFiles.sorted().flatMap {
       logger.log("Parsing file: \($0)")
 
       let path = URL(fileURLWithPath: $0)
-      let content = try String(contentsOf: path)
+      let content = try String(contentsOf: path, encoding: .utf8)
       let tree = Parser.parse(source: content)
       let syntaxVisitor = DependencyModulesParser(viewMode: .all)
-      let fileModules = syntaxVisitor.parse(tree)
+      let fileModules = syntaxVisitor.parse(tree).sorted { $0.name < $1.name }
 
       logger.log("  Found \(fileModules.count) modules in \(path.lastPathComponent)")
       fileModules.forEach { logger.log("    - \($0.name)") }
