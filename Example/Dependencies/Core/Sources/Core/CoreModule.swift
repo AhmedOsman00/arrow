@@ -1,6 +1,7 @@
 import Arrow
 
-public struct CoreModule: SingletonScope {
+/// Networking is a lazy singleton: created on first use rather than at app launch.
+public struct CoreModule: LazySingletonScope {
   public init() {}
 
   public var provideNetwork: Networking {

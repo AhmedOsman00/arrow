@@ -3,7 +3,8 @@ import Foundation
 /// Thread-safe dependency injection container for managing application dependencies.
 ///
 /// `Container` is a singleton service locator that manages dependency registration and resolution.
-/// It supports two lifecycle scopes (singleton and transient) and provides type-safe dependency injection.
+/// It supports three lifecycle scopes (singleton, lazy singleton and transient) and provides type-safe
+/// dependency injection.
 ///
 /// ## Thread Safety
 /// - Registration, resolution, and removal are all protected by a lock
@@ -46,6 +47,7 @@ public final class Container: Registerable, @unchecked Sendable {
   ///   - factory: A closure that creates the dependency instance
   ///
   /// - Note: For `.singleton` scope, the factory is invoked immediately and the instance is cached.
+  ///         For `.lazySingleton` scope, the factory is invoked once, on the first `resolve()` call.
   ///         For `.transient` scope, the factory is stored and invoked on each `resolve()` call.
   ///
   /// - Precondition: A dependency with the same type and name must not already be registered
@@ -79,6 +81,8 @@ public final class Container: Registerable, @unchecked Sendable {
     switch objectScope {
     case .singleton:
       entry = .instance(factory(self))
+    case .lazySingleton:
+      entry = .lazy(LazyInstance { factory(self) })
     case .transient:
       entry = .factory { factory(self) }
     }
@@ -222,6 +226,7 @@ private extension Container {
   struct Registration {
     enum Entry {
       case instance(Any)
+      case lazy(LazyInstance)
       case factory(() -> Any)
     }
 
@@ -233,14 +238,41 @@ private extension Container {
   func lookup<Dependency>(_ type: Dependency.Type, name: String?) -> Dependency? {
     let registration = locked { dependencies[Key(type, name: name)] }
 
-    // Transient factories run outside the lock so they can resolve their own dependencies.
+    // Factories run outside the container lock so they can resolve their own dependencies.
     switch registration?.entry {
     case .instance(let instance):
       return instance as? Dependency
+    case .lazy(let lazyInstance):
+      return lazyInstance.value() as? Dependency
     case .factory(let factory):
       return factory() as? Dependency
     case nil:
       return nil
+    }
+  }
+
+  /// Creates its value on first access, exactly once, even under concurrent access.
+  ///
+  /// Uses its own lock rather than the container's, so the factory can resolve other dependencies.
+  final class LazyInstance: @unchecked Sendable {
+    private let lock = NSLock()
+    private let factory: () -> Any
+    private var instance: Any?
+
+    init(_ factory: @escaping () -> Any) {
+      self.factory = factory
+    }
+
+    func value() -> Any {
+      lock.lock()
+      defer { lock.unlock() }
+
+      if let instance {
+        return instance
+      }
+      let created = factory()
+      instance = created
+      return created
     }
   }
 

@@ -1,12 +1,17 @@
-import SwiftUI
+import Analytics
 import Arrow
-
-let container = Container.shared
+import Core
+import SwiftUI
 
 @main
 struct ExampleApp: App {
   init() {
-    container.register()
+    // Registries come from each dependencies.generated.swift; register dependencies before dependents.
+    Container.shared.register(
+      CoreDependencies.self,
+      AnalyticsDependencies.self,
+      ExampleDependencies.self
+    )
   }
 
   var body: some Scene {

@@ -25,6 +25,27 @@ final class TestCounter {
   }
 }
 
+/// Registers a service that `DependentRegistry` needs while registering.
+enum BaseRegistry: DependencyRegistry {
+  static func register(in container: Container) {
+    container.register(TestService.self) { _ in TestServiceImpl(id: "base") }
+  }
+}
+
+/// Builds an eager singleton that resolves `BaseRegistry`'s service.
+enum DependentRegistry: DependencyRegistry {
+  static func register(in container: Container) {
+    container.register(TestCounter.self, objectScope: .singleton) { resolver in
+      _ = resolver.resolve(TestService.self)
+      return TestCounter()
+    }
+  }
+}
+
+/// Still compiles through the deprecated alias.
+@available(*, deprecated)
+struct LegacyModule: Default {}
+
 final class ContainerTests: XCTestCase {
   override func setUp() {
     super.setUp()
@@ -179,6 +200,72 @@ final class ContainerTests: XCTestCase {
     // Then
     let leftover: TestService? = Container.shared.tryResolve(TestService.self, name: "service-0")
     XCTAssertNil(leftover)
+  }
+
+  func testLazySingletonIsCreatedOnFirstResolveOnly() {
+    // Given
+    Container.shared.register(TestCounter.self, objectScope: .lazySingleton) { _ in
+      TestCounter()
+    }
+    XCTAssertEqual(TestCounter.creationCount, 0, "Lazy singleton should not be created at registration")
+
+    // When
+    let first: TestCounter = Container.shared.resolve(TestCounter.self)
+    let second: TestCounter = Container.shared.resolve(TestCounter.self)
+
+    // Then
+    XCTAssertTrue(first === second, "Lazy singleton should return the same instance")
+    XCTAssertEqual(TestCounter.creationCount, 1)
+  }
+
+  func testLazySingletonIsCreatedOnceUnderConcurrentFirstAccess() {
+    // Given
+    Container.shared.register(TestCounter.self, objectScope: .lazySingleton) { _ in
+      TestCounter()
+    }
+
+    // When
+    var instances = [ObjectIdentifier?](repeating: nil, count: 100)
+    let lock = NSLock()
+    DispatchQueue.concurrentPerform(iterations: instances.count) { index in
+      let counter: TestCounter = Container.shared.resolve(TestCounter.self)
+      lock.lock()
+      instances[index] = ObjectIdentifier(counter)
+      lock.unlock()
+    }
+
+    // Then
+    XCTAssertEqual(Set(instances).count, 1)
+    XCTAssertEqual(TestCounter.creationCount, 1)
+  }
+
+  func testLazySingletonFactoryCanResolveOtherDependencies() {
+    // Given
+    Container.shared.register(TestService.self) { _ in
+      TestServiceImpl(id: "dependency")
+    }
+    Container.shared.register(TestCounter.self, objectScope: .lazySingleton) { resolver in
+      _ = resolver.resolve(TestService.self)
+      return TestCounter()
+    }
+
+    // When
+    let counter: TestCounter? = Container.shared.tryResolve(TestCounter.self)
+
+    // Then
+    XCTAssertNotNil(counter)
+  }
+
+  // MARK: - Registry Tests
+
+  func testRegisterRegistriesInOrder() {
+    // When
+    Container.shared.register(BaseRegistry.self, DependentRegistry.self)
+
+    // Then
+    let counter: TestCounter? = Container.shared.tryResolve(TestCounter.self)
+    XCTAssertNotNil(counter)
+    XCTAssertEqual(TestCounter.creationCount, 1, "Eager singleton should be created during registration")
   }
 
   // MARK: - Error Handling Tests

@@ -22,9 +22,6 @@ public protocol Registerable {
 
   /// Removes all registered dependencies.
   func reset()
-
-  /// Empty registration method for modules without dependencies.
-  func register()
 }
 
 extension Registerable {
@@ -52,6 +49,4 @@ extension Registerable {
   public func resolved<Dependency>(name: String? = nil) -> Dependency {
     return resolve(Dependency.self, name: name)
   }
-
-  public func register() {}
 }

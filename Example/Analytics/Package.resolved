@@ -1,15 +1,6 @@
 {
-  "originHash" : "871952e21e3d5dd6c2b6fc203253ea9be8dde870f64992e38b175f89fa3bfdbc",
+  "originHash" : "3732d00746a540cd23b9c24e1b2cf60cc0cc58643819442dd7b43b2666e1e74f",
   "pins" : [
-    {
-      "identity" : "arrow",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/AhmedOsman00/arrow.git",
-      "state" : {
-        "revision" : "13ac0f49a1dd670ef5a3c9c4e8f44258c144be8b",
-        "version" : "1.0.0"
-      }
-    },
     {
       "identity" : "swift-syntax",
       "kind" : "remoteSourceControl",

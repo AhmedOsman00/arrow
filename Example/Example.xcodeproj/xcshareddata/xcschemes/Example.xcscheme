@@ -11,7 +11,7 @@
             ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
             <ActionContent
                title = "Run Script"
-               scriptText = "export PATH=&quot;/opt/homebrew/bin:$PATH&quot;&#10;arrow generate -v&#10;">
+               scriptText = "export PATH=&quot;/opt/homebrew/bin:$PATH&quot;&#10;# Set ARROW_PATH to use a locally built generator instead of the installed one.&#10;ARROW=&quot;${ARROW_PATH:-arrow}&quot;&#10;CORE=&quot;$PROJECT_DIR/Dependencies/Core/Sources/Core&quot;&#10;ANALYTICS=&quot;$PROJECT_DIR/Analytics/Sources/Analytics&quot;&#10;&quot;$ARROW&quot; generate --is-package --package-path &quot;$CORE&quot;&#10;&quot;$ARROW&quot; generate --is-package --package-path &quot;$ANALYTICS&quot;&#10;&quot;$ARROW&quot; generate -v --external-path &quot;$CORE&quot; --external-path &quot;$ANALYTICS&quot;&#10;">
                <EnvironmentBuildable>
                   <BuildableReference
                      BuildableIdentifier = "primary"
