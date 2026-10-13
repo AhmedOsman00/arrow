@@ -1,7 +1,7 @@
 import Foundation
 
 struct FileUiModel {
-  let imports: Set<String>
+  let imports: [String]
   let dependencies: [DependencyUiModel]
 
   var modules: [String] {

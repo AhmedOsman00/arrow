@@ -285,7 +285,7 @@ final class ParserTests: XCTestCase {
     // given
     let content = createContent(
       """
-          @Named("AnotherExtraModel")
+          @Name("AnotherExtraModel")
           func provideExtraModel(delegate: Delegate) -> ExtraModel {
               ExtraModel(service: Service(name: "", value: 0))
           }
@@ -312,7 +312,7 @@ final class ParserTests: XCTestCase {
     // given
     let content = createContent(
       """
-          @Named("AnotherExtraModel")
+          @Name("AnotherExtraModel")
           var provideExtraModel: ExtraModel {
               ExtraModel(service: Service(name: "", value: 0))
           }
@@ -388,7 +388,7 @@ final class ParserTests: XCTestCase {
     // given
     let content = createContent(
       """
-          @Named("AnotherExtraModel")
+          @Name("AnotherExtraModel")
           func provideExtraModel(delegate: Delegate) {
               ExtraModel(service: Service(name: "", value: 0))
           }
@@ -411,6 +411,125 @@ final class ParserTests: XCTestCase {
           let delegate = Delegate()
           let service: Service = Service()
           var factory = Factory()
+      """)
+
+    // when
+    let modules = parse(content)
+
+    // then
+    XCTAssertEqual(modules, expectedModules)
+  }
+
+  func testSkipParsing_privateAndStaticMembers() {
+    // expected
+    let expectedModules: Set<DependencyModule> = .fixture(types: [
+      .init(dependencyType: .method, name: nil, type: "Service", block: "provideService", parameters: [])
+    ])
+
+    // given
+    let content = createContent(
+      """
+          func provideService() -> Service { Service() }
+          private func makeFormatter() -> DateFormatter { DateFormatter() }
+          fileprivate var helper: Helper { Helper() }
+          static func shared() -> Module { Module() }
+      """)
+
+    // when
+    let modules = parse(content)
+
+    // then
+    XCTAssertEqual(modules, expectedModules)
+  }
+
+  func testSkipParsing_nestedTypesAndLocalFunctions() {
+    // expected
+    let expectedModules: Set<DependencyModule> = .fixture(types: [
+      .init(dependencyType: .method, name: nil, type: "Service", block: "provideService", parameters: [])
+    ])
+
+    // given
+    let content = createContent(
+      """
+          func provideService() -> Service {
+              func makeHelper() -> Helper { Helper() }
+              return Service(helper: makeHelper())
+          }
+
+          struct Builder {
+              func build() -> Product { Product() }
+          }
+      """)
+
+    // when
+    let modules = parse(content)
+
+    // then
+    XCTAssertEqual(modules, expectedModules)
+  }
+
+  func testParsing_ifConfigMembers() {
+    // expected
+    let expectedModules: Set<DependencyModule> = .fixture(types: [
+      .init(dependencyType: .method, name: nil, type: "Logger", block: "provideLogger", parameters: [])
+    ])
+
+    // given
+    let content = createContent(
+      """
+          #if DEBUG
+          func provideLogger() -> Logger { ConsoleLogger() }
+          #endif
+      """)
+
+    // when
+    let modules = parse(content)
+
+    // then
+    XCTAssertEqual(modules, expectedModules)
+  }
+
+  func testParsing_qualifiedScope() {
+    // expected
+    let expectedModules: Set<DependencyModule> = .fixture(
+      scope: .singleton,
+      types: [
+        .init(dependencyType: .method, name: nil, type: "Service", block: "provideService", parameters: [])
+      ])
+
+    // given
+    let content = createContent(
+      scope: "Arrow.\(DependencyModule.Scope.singleton.rawValue)",
+      """
+          func provideService() -> Service { Service() }
+      """)
+
+    // when
+    let modules = parse(content)
+
+    // then
+    XCTAssertEqual(modules, expectedModules)
+  }
+
+  func testParsing_nameAttributeMatchesExactly() {
+    // expected
+    let expectedModules: Set<DependencyModule> = .fixture(types: [
+      .init(dependencyType: .method, name: "Primary", type: "Service", block: "providePrimary", parameters: []),
+      .init(dependencyType: .method, name: "Secondary", type: "Service", block: "provideSecondary", parameters: []),
+      .init(dependencyType: .method, name: nil, type: "Service", block: "provideOther", parameters: []),
+    ])
+
+    // given
+    let content = createContent(
+      """
+          @Name("Primary")
+          func providePrimary() -> Service { Service() }
+
+          @Arrow.Name("Secondary")
+          func provideSecondary() -> Service { Service() }
+
+          @Renamed("Ignored")
+          func provideOther() -> Service { Service() }
       """)
 
     // when

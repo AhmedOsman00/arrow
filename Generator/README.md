@@ -19,7 +19,7 @@ This eliminates the tedious and error-prone task of manually writing dependency 
 - **Named Dependencies**: Supports `@Name("...")` and `@Named("...")` attributes for multiple instances of the same type
 - **Default Parameters**: Handles methods with default parameter values
 - **Dual Mode**: Works with both Xcode projects and Swift Packages
-- **Xcode Integration**: Automatically adds generated file to your Xcode project
+- **Xcode Integration**: Runs from a Run Script build phase using Xcode's environment
 
 ## Prerequisites
 
@@ -76,74 +76,26 @@ sudo cp bin/arrow /usr/local/bin/
 sudo ln -s $(pwd)/bin/arrow /usr/local/bin/arrow
 ```
 
-### Swift Package Plugin (Recommended for Swift Packages)
-
-For Swift Package projects, you can use the [Arrow Generator Plugin](https://github.com/AhmedOsman00/arrow-generator-plugin) which integrates seamlessly with Swift Package Manager:
-
-```swift
-// Add to your Package.swift dependencies
-dependencies: [
-    .package(url: "https://github.com/AhmedOsman00/arrow-generator-plugin.git", from: "1.0.0")
-]
-```
-
-Then run from your package directory:
-
-```bash
-swift package plugin arrow-generator --allow-writing-to-package-directory
-```
-
-See the [plugin documentation](https://github.com/AhmedOsman00/arrow-generator-plugin) for more details.
-
 ## Usage
 
-Arrow Generator operates in two modes: **Xcode Project Mode** and **Swift Package Mode**.
+Arrow Generator has two modes: **Xcode project mode** (the default) and **Swift Package mode** (`--is-package`).
 
 ### Xcode Project Mode
 
-Use this mode when working with Xcode projects:
+Scans the Swift files under the project root, plus any package sources you pass, and overwrites an existing `dependencies.generated.swift`. The generator does not add the file to your project, so create an empty `dependencies.generated.swift` and add it to your target once.
 
 ```bash
 arrow generate \
-  --xcode-proj-path /path/to/YourApp.xcodeproj \
-  --target-name YourTarget
+  --proj-root /path/to/YourApp \
+  --package-path /path/to/LocalPackage/Sources/LocalPackage \
+  --package-path /path/to/OtherPackage/Sources/OtherPackage
 ```
 
-**Including External Swift Packages:**
+By default the file is written to `<proj-root>/dependencies.generated.swift`. Use `--ext-path` to point somewhere else.
 
-If your Xcode project depends on external Swift Packages, you can scan them too:
+**Xcode Build Phase Integration**
 
-```bash
-# Single package Sources directory
-arrow generate \
-  --xcode-proj-path /path/to/YourApp.xcodeproj \
-  --target-name YourTarget \
-  --package-sources-path /path/to/Package/Sources
-
-# Find all "Sources" directories recursively using /**
-arrow generate \
-  --xcode-proj-path /path/to/YourApp.xcodeproj \
-  --target-name YourTarget \
-  --package-sources-path "Dependencies/**"
-
-# Multiple paths (can be combined)
-arrow generate \
-  --xcode-proj-path /path/to/YourApp.xcodeproj \
-  --target-name YourTarget \
-  --package-sources-path "Dependencies/**" \
-  --package-sources-path /path/to/OtherPackage/Sources
-```
-
-**Note**: The `/**` pattern automatically finds all directories named "Sources" under the specified path, making it easy to scan multiple Swift Packages at once.
-
-**Environment Variables** (useful for Xcode build phases):
-
-```bash
-# Uses TARGET_NAME and PROJECT_FILE_PATH from Xcode environment
-arrow generate
-```
-
-**Xcode Build Phase Integration:**
+Inside a Run Script phase, `--proj-root` falls back to Xcode's `PROJECT_DIR`, so no arguments are needed:
 
 1. Add a new "Run Script Phase" in your target's Build Phases
 2. Add the script:
@@ -158,19 +110,15 @@ arrow generate
 
 ### Swift Package Mode
 
-Use this mode when working with standalone Swift Packages (without Xcode project):
+Use this mode for standalone Swift Packages. The file is written into the first sources directory you pass:
 
 ```bash
 arrow generate \
   --is-package \
-  --package-sources-path /path/to/Package/Sources
+  --package-path Sources/YourPackage
 ```
 
-**Swift Package Plugin Alternative (Recommended)**: For Swift Package projects, the [Arrow Generator Plugin](#swift-package-plugin-recommended-for-swift-packages) provides a more convenient workflow through Swift Package Manager integration:
-
-```bash
-swift package plugin arrow-generator --allow-writing-to-package-directory
-```
+To regenerate easily, add the command to a `Makefile` target or a script in your package.
 
 ## Writing Dependency Modules
 
@@ -308,13 +256,14 @@ let prodAPI: APIClient = container.resolved("Production")
 arrow generate [OPTIONS]
 
 OPTIONS:
-  --is-package                   Enable Swift Package mode (no Xcode project required)
-  --xcode-proj-path <path>       Path to .xcodeproj file (required for Xcode mode)
-  --target-name <name>           Xcode target name to scan (required for Xcode mode)
-  --package-sources-path <path>  Path to Swift Package sources directory.
-                                 Use 'path/**' to find all 'Sources' directories
-                                 recursively, or provide direct path to a Sources
-                                 directory (can be specified multiple times)
+  -v                             Enable verbose logging
+  --is-package                   Enable Swift Package mode instead of Xcode project mode
+  --proj-root <path>             Root path of the project (falls back to PROJECT_DIR)
+  --ext-path <path>              Path to an existing dependencies.generated.swift
+                                 (defaults to <proj-root>/dependencies.generated.swift)
+  --package-path <path>          Path to a Swift Package sources directory
+                                 (can be specified multiple times)
+  --version                      Show the version
   --help                         Show help information
 ```
 
