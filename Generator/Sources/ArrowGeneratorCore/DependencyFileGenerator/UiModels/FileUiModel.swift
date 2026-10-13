@@ -1,6 +1,7 @@
 import Foundation
 
 struct FileUiModel {
+  let registry: RegistryConfiguration
   let imports: [String]
   let dependencies: [DependencyUiModel]
 

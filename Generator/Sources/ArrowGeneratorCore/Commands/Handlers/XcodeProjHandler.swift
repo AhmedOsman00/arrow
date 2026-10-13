@@ -19,12 +19,14 @@ final class XcodeProjHandler {
   func addDependenciesFileToXcodeProject(
     projRoot: String,
     packageSourcesPaths: [String],
-    depsExtPath: String
+    externalPaths: [String],
+    depsExtPath: String,
+    registry: RegistryConfiguration
   ) throws {
-    let allPaths = packageSourcesPaths + [projRoot]
-    let swiftFiles = try swiftHandler.getAllSwiftFiles(in: allPaths)
-    let modules = try swiftHandler.parseSwiftFiles(swiftFiles)
-    let file = try swiftHandler.generateDependenciesFile(modules: modules)
+    let file = try swiftHandler.generateDependenciesFile(
+      paths: packageSourcesPaths + [projRoot],
+      externalPaths: externalPaths,
+      registry: registry)
 
     guard Path(depsExtPath).exists else {
       throw ValidationError.fileNotFound

@@ -6,7 +6,30 @@ import SwiftSyntax
 protocol SwiftFilesHandlerProtocol {
   func getAllSwiftFiles(in swiftDirs: [String]) throws -> Set<String>
   func parseSwiftFiles(_ swiftFiles: Set<String>) throws -> [DependencyModule]
-  func generateDependenciesFile(modules: [DependencyModule]) throws -> String
+  func generateDependenciesFile(
+    modules: [DependencyModule],
+    externalModules: [DependencyModule],
+    registry: RegistryConfiguration
+  ) throws -> String
+}
+
+extension SwiftFilesHandlerProtocol {
+  /// Parses the files under `paths` and `externalPaths` and generates the registry file.
+  ///
+  /// Files under `externalPaths` belong to other registries: their providers count for validation
+  /// and ordering but aren't emitted, even when an external path is nested inside one of `paths`.
+  func generateDependenciesFile(
+    paths: [String],
+    externalPaths: [String],
+    registry: RegistryConfiguration
+  ) throws -> String {
+    let externalFiles = try getAllSwiftFiles(in: externalPaths)
+    let ownFiles = try getAllSwiftFiles(in: paths).subtracting(externalFiles)
+    return try generateDependenciesFile(
+      modules: parseSwiftFiles(ownFiles),
+      externalModules: parseSwiftFiles(externalFiles),
+      registry: registry)
+  }
 }
 
 final class SwiftFilesHandler: SwiftFilesHandlerProtocol {
@@ -131,20 +154,24 @@ final class SwiftFilesHandler: SwiftFilesHandlerProtocol {
     }
   }
 
-  func generateDependenciesFile(modules: [DependencyModule]) throws -> String {
-    logger.log("🔨 Generating dependencies file from \(modules.count) modules")
+  func generateDependenciesFile(
+    modules: [DependencyModule],
+    externalModules: [DependencyModule],
+    registry: RegistryConfiguration
+  ) throws -> String {
+    logger.log("🔨 Generating \(registry.name) from \(modules.count) modules (\(externalModules.count) external)")
 
     logger.log("Resolving dependency graph...")
-    let buildMap = try DependencyGraphResolver(data: modules).resolveAndValidate()
+    let buildMap = try DependencyGraphResolver(data: modules + externalModules).resolveAndValidate()
     logger.log("✅ Dependency graph resolved with \(buildMap.count) entries")
 
     logger.log("Build order:")
     buildMap.enumerated().forEach { logger.log("  \($1)-> \($0 + 1)") }
 
-    let presenter = DependencyFilePresenter(data: modules, dependenciesOrder: buildMap)
+    let presenter = DependencyFilePresenter(data: modules, dependenciesOrder: buildMap, registry: registry)
     var file = ""
     DependencyFile(presenter: presenter).file.write(to: &file)
-    logger.log("✅ Dependency extension updated")
+    logger.log("✅ \(registry.name) generated")
 
     return file
   }

@@ -6,6 +6,8 @@ public enum Constants {
   public static let targetNameArgument = "target-name"
   public static let extensionPathArgument = "ext-path"
   public static let projRootArgument = "proj-root"
+  public static let registryNameArgument = "registry-name"
+  public static let externalPathArgument = "external-path"
   public static let generateCommand = "generate"
   public static let generatedFileName = "dependencies.generated.swift"
   /// ⚠️ SYNC: Keep in sync with Arrow package [Arrow/Sources/Arrow/Named]

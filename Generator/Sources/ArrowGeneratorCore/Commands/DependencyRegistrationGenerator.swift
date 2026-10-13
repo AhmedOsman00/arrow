@@ -10,6 +10,9 @@ import SwiftSyntax
 /// This command provides the main entry point for the Arrow Generator tool. It supports
 /// two modes of operation:
 ///
+/// The output is a `DependencyRegistry` enum (for example `AnalyticsDependencies`) that apps
+/// register with `Container.shared.register(AnalyticsDependencies.self, AppDependencies.self)`.
+///
 /// **Xcode Project Mode** (default):
 /// - Scans the project root (and any `--package-path`) for Swift sources
 /// - Generates registration code
@@ -17,7 +20,7 @@ import SwiftSyntax
 ///
 /// **Swift Package Mode** (`--is-package` flag):
 /// - Scans one or more sources directories for Swift files
-/// - Generates registration code in the first sources directory
+/// - Generates a `public` registry in the first sources directory
 /// - Does not modify any project files
 ///
 /// The tool performs these steps:
@@ -38,7 +41,7 @@ public struct DependencyRegistrationGenerator: ParsableCommand {
   public static let configuration = CommandConfiguration(
     commandName: Constants.generateCommand,
     abstract:
-      "Generates a Container extension with dependency registration code by scanning Swift files for dependency modules"
+      "Generates a DependencyRegistry with dependency registration code by scanning Swift files for dependency modules"
   )
 
   public init() {}
@@ -71,6 +74,22 @@ public struct DependencyRegistrationGenerator: ParsableCommand {
   )
   var packageSourcesPaths: [String] = []
 
+  @Option(
+    name: .customLong(Constants.externalPathArgument),
+    help:
+      // swiftlint:disable:next line_length
+      "Sources of dependencies provided by another registry (can be specified multiple times). Used for validation only; not generated"
+  )
+  var externalPaths: [String] = []
+
+  @Option(
+    name: .customLong(Constants.registryNameArgument),
+    help:
+      // swiftlint:disable:next line_length
+      "Name of the generated registry type. Defaults to <name>Dependencies, using the first --package-path in package mode or PRODUCT_MODULE_NAME / TARGET_NAME in Xcode mode"
+  )
+  var registryName: String?
+
   public mutating func run() throws {
     let logger = Logger(isVerbose: verbose)
     let swiftHandler = SwiftFilesHandler(logger: logger)
@@ -80,11 +99,18 @@ public struct DependencyRegistrationGenerator: ParsableCommand {
         throw ValidationError.missingArgument(Constants.packageSourcesPathArgument)
       }
 
+      let packageName = URL(fileURLWithPath: packageSourcesPaths[0]).standardizedFileURL.lastPathComponent
+      let registry = RegistryConfiguration(
+        name: registryName ?? RegistryConfiguration.defaultName(for: packageName),
+        isPublic: true)
       let packageHandler = PackageHandler(
         swiftHandler: swiftHandler,
         generatedFileName: Constants.generatedFileName,
         logger: logger)
-      return try packageHandler.addDependenciesFileToSwiftPackage(packageSourcesPaths: packageSourcesPaths)
+      return try packageHandler.addDependenciesFileToSwiftPackage(
+        packageSourcesPaths: packageSourcesPaths,
+        externalPaths: externalPaths,
+        registry: registry)
     }
 
     guard
@@ -93,6 +119,11 @@ public struct DependencyRegistrationGenerator: ParsableCommand {
       throw ValidationError.missingArgument(Constants.projRootArgument)
     }
 
+    let environment = ProcessInfo.processInfo.environment
+    let targetName = environment["PRODUCT_MODULE_NAME"] ?? environment["TARGET_NAME"] ?? "App"
+    let registry = RegistryConfiguration(
+      name: registryName ?? RegistryConfiguration.defaultName(for: targetName),
+      isPublic: false)
     let depsExtPath = depsExtPath ?? "\(projRoot)/\(Constants.generatedFileName)"
     let xcodehandler = XcodeProjHandler(
       swiftHandler: swiftHandler,
@@ -101,7 +132,9 @@ public struct DependencyRegistrationGenerator: ParsableCommand {
     try xcodehandler.addDependenciesFileToXcodeProject(
       projRoot: projRoot,
       packageSourcesPaths: packageSourcesPaths,
-      depsExtPath: depsExtPath)
+      externalPaths: externalPaths,
+      depsExtPath: depsExtPath,
+      registry: registry)
   }
 
   enum ValidationError: LocalizedError {

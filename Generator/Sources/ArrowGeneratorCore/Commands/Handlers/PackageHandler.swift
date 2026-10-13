@@ -17,11 +17,16 @@ final class PackageHandler {
   }
 
   /// Scans every path and writes the generated file into the first one.
-  func addDependenciesFileToSwiftPackage(packageSourcesPaths: [String]) throws {
+  func addDependenciesFileToSwiftPackage(
+    packageSourcesPaths: [String],
+    externalPaths: [String],
+    registry: RegistryConfiguration
+  ) throws {
     guard let outputDirectory = packageSourcesPaths.first else { return }
-    let swiftFiles = try swiftHandler.getAllSwiftFiles(in: packageSourcesPaths)
-    let modules = try swiftHandler.parseSwiftFiles(swiftFiles)
-    let file = try swiftHandler.generateDependenciesFile(modules: modules)
+    let file = try swiftHandler.generateDependenciesFile(
+      paths: packageSourcesPaths,
+      externalPaths: externalPaths,
+      registry: registry)
     let outputPath = Path(outputDirectory) + Path(generatedFileName)
     try file.write(toFile: outputPath.string, atomically: true, encoding: .utf8)
   }

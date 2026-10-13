@@ -36,7 +36,7 @@ final class DependencyFilePresenterTests: XCTestCase {
       .init("_:Type1"),
       .init("type1Alias:Type1"),
     ]
-    let presenter = DependencyFilePresenter(data: modules, dependenciesOrder: dependenciesOrder)
+    let presenter = DependencyFilePresenter(data: modules, dependenciesOrder: dependenciesOrder, registry: .fixture)
 
     // Act
     let fileUiModel = presenter.fileUiModel
@@ -49,13 +49,13 @@ final class DependencyFilePresenterTests: XCTestCase {
     let dependency1 = fileUiModel.dependencies[1]
     XCTAssertEqual(dependency1.module, "Module1")
     XCTAssertEqual(dependency1.type, "Type1")
-    XCTAssertEqual(dependency1.name, "Type1")
+    XCTAssertNil(dependency1.name, "Unnamed providers rely on the runtime type name")
     XCTAssertEqual(dependency1.block, "Block1")
     XCTAssertEqual(dependency1.scope, "singleton")
     XCTAssertEqual(dependency1.parameters[0].label, nil)
-    XCTAssertEqual(dependency1.parameters[0].id, "ParamType1")
+    XCTAssertNil(dependency1.parameters[0].id)
     XCTAssertEqual(dependency1.parameters[1].label, nil)
-    XCTAssertEqual(dependency1.parameters[1].id, "ParamType3")
+    XCTAssertNil(dependency1.parameters[1].id)
     XCTAssertEqual(dependency1.parameters[2].label, "Param3")
     XCTAssertEqual(dependency1.parameters[2].id, "paramType3")
 
@@ -90,10 +90,33 @@ final class DependencyFilePresenterTests: XCTestCase {
             ])
         ])
     ]
-    let presenter = DependencyFilePresenter(data: modules, dependenciesOrder: [.init("_:Pair")])
+    let presenter = DependencyFilePresenter(data: modules, dependenciesOrder: [.init("_:Pair")], registry: .fixture)
 
     let parameters = presenter.fileUiModel.dependencies[0].parameters
 
     XCTAssertEqual(parameters.map(\.isLast), [false, true])
   }
+
+  func testFileUiModel_lazySingletonScope() {
+    let modules: [DependencyModule] = [
+      .fixture(scope: .lazySingleton, types: [.fixture(type: "Database", block: "provideDatabase")])
+    ]
+    let presenter = DependencyFilePresenter(
+      data: modules, dependenciesOrder: [.init("_:Database")], registry: .fixture)
+
+    XCTAssertEqual(presenter.fileUiModel.dependencies.map(\.scope), ["lazySingleton"])
+  }
+
+  func testFileUiModel_skipsDependenciesNotProvidedByItsModules() {
+    // `_:External` is in the build order (from another registry) but not in `data`.
+    let modules: [DependencyModule] = [.fixture(types: [.fixture(type: "Local")])]
+    let presenter = DependencyFilePresenter(
+      data: modules, dependenciesOrder: [.init("_:External"), .init("_:Local")], registry: .fixture)
+
+    XCTAssertEqual(presenter.fileUiModel.dependencies.map(\.type), ["Local"])
+  }
+}
+
+extension RegistryConfiguration {
+  static let fixture = RegistryConfiguration(name: "AppDependencies", isPublic: false)
 }
