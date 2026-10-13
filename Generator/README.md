@@ -26,6 +26,7 @@ This eliminates the tedious and error-prone task of manually writing dependency 
 - macOS 10.15 or later
 - Swift 6.2.1 or later
 - Xcode (for Xcode project mode)
+- [Arrow](https://github.com/AhmedOsman00/Arrow) 1.1.0 or later in the project that uses the generated code
 
 ## Installation
 
