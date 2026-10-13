@@ -1,10 +1,12 @@
 import SwiftUI
 import Arrow
 
+let container = Container.shared
+
 @main
 struct ExampleApp: App {
   init() {
-    Container.shared.register()
+    container.register()
   }
 
   var body: some Scene {

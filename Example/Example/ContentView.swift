@@ -10,7 +10,7 @@ struct ContentView: View {
           Label("Home", systemImage: "house.fill")
         }
 
-      MoreViewControllerWrapper(factory: MoreFactory())
+      MoreViewControllerWrapper()
         .tabItem {
           Label("More", systemImage: "ellipsis.circle.fill")
         }

@@ -1,12 +1,13 @@
 import Arrow
 
-struct AnalyticsModule: SingletonScope {
+public struct AnalyticsModule: SingletonScope {
+  public init() {}
 
-  func provideFirebaseProvider() -> FirebaseAnalyticsProvider {
+  public func provideFirebaseProvider() -> FirebaseAnalyticsProvider {
     FirebaseAnalyticsProvider()
   }
 
-  func provideSnowplowProvider() -> SnowplowAnalyticsProvider {
+  public func provideSnowplowProvider() -> SnowplowAnalyticsProvider {
     SnowplowAnalyticsProvider(
       endpoint: "https://collector.snowplowanalytics.com",
       namespace: "example-app",
@@ -14,7 +15,7 @@ struct AnalyticsModule: SingletonScope {
     )
   }
 
-  func provideAnalytics(
+  public func provideAnalytics(
     _ firebaseProvider: FirebaseAnalyticsProvider,
     _ snowplowProvider: SnowplowAnalyticsProvider,
   ) -> Analytics {

@@ -1,7 +1,7 @@
 import SwiftUI
 import Arrow
 
-final class HomeFactory {
+struct HomeFactory {
   @Inject var viewModel: HomeViewModel
 
   func makeHomeView() -> HomeView {

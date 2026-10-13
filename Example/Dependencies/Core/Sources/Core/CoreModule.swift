@@ -1,13 +1,15 @@
 import Arrow
 
-struct CoreModule: SingletonScope {
-  var provideNetwork: Networking {
+public struct CoreModule: SingletonScope {
+  public init() {}
+
+  public var provideNetwork: Networking {
     NetworkingImpl()
   }
 }
 
 extension CoreModule: TransientScope {
-  func provideConsoleLogger() -> LoggerFactory {
+  public func provideConsoleLogger() -> LoggerFactory {
     { prefix in
       ConsoleLogger(prefix: prefix)
     }

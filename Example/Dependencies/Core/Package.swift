@@ -16,8 +16,7 @@ let package = Package(
     )
   ],
   dependencies: [
-    .package(name: "ArrowGeneratorPlugin", path: "../../../arrow-generator-plugin"),
-    .package(name: "Arrow", path: "../../../arrow"),
+    .package(url: "https://github.com/AhmedOsman00/arrow.git", from: "1.0.0")
   ],
   targets: [
     .target(

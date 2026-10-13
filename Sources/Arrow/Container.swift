@@ -6,9 +6,13 @@ import Foundation
 /// It supports two lifecycle scopes (singleton and transient) and provides type-safe dependency injection.
 ///
 /// ## Thread Safety
-/// - Registration is thread-safe and protected by NSLock
-/// - Resolution is NOT thread-safe - all registration must complete before resolution begins
-/// - This design assumes registration happens at app startup before concurrent access
+/// - Registration, resolution, and removal are all protected by a lock
+/// - Factories run outside the lock, so a factory may resolve or register other dependencies
+///
+/// ## Keys
+/// Dependencies are keyed by their type *and* name. The name defaults to the type name, so
+/// `resolve(Foo.self)` and `resolve(Foo.self, name: "Foo")` find the same registration, while
+/// the same name used for two different types never collides.
 ///
 /// ## Usage
 /// ```swift
@@ -21,16 +25,14 @@ import Foundation
 /// let service: MyService = Container.shared.resolve(MyService.self)
 /// ```
 ///
-/// - Important: All `register()` calls must complete at app initialization before any `resolve()` calls.
-public final class Container: Registerable {
+public final class Container: Registerable, @unchecked Sendable {
   /// The shared singleton instance of the container.
-  /// Exposed as `Registerable` protocol for better abstraction.
-  nonisolated(unsafe) public static let shared = Container()
+  public static let shared = Container()
 
-  /// Internal storage for registered dependencies, keyed by type name or custom name.
-  private var dependencies = [String: Any]()
+  /// Internal storage for registered dependencies, keyed by type and name.
+  private var dependencies = [Key: Registration]()
 
-  /// Lock for thread-safe registration.
+  /// Guards `dependencies`. Never held while running a factory.
   private let lock = NSLock()
 
   private init() {}
@@ -46,7 +48,7 @@ public final class Container: Registerable {
   /// - Note: For `.singleton` scope, the factory is invoked immediately and the instance is cached.
   ///         For `.transient` scope, the factory is stored and invoked on each `resolve()` call.
   ///
-  /// - Precondition: A dependency with the same name must not already be registered
+  /// - Precondition: A dependency with the same type and name must not already be registered
   ///
   /// ## Example
   /// ```swift
@@ -66,21 +68,24 @@ public final class Container: Registerable {
     objectScope: DependencyScope,
     factory: @escaping (Registerable) -> Dependency
   ) {
-    lock.lock()
-    defer { lock.unlock() }
-
-    let name = name ?? "\(type)"
-    guard dependencies[name] == nil else {
-      fatalError("Dependency \(name) is already registered.")
+    let key = Key(type, name: name)
+    let alreadyRegistered = { "Dependency \(key.name) of type '\(type)' is already registered." }
+    locked {
+      guard dependencies[key] == nil else { fatalError(alreadyRegistered()) }
     }
 
+    // Built outside the lock so the factory can resolve or register other dependencies.
+    let entry: Registration.Entry
     switch objectScope {
     case .singleton:
-      dependencies[name] = factory(Self.shared)
+      entry = .instance(factory(self))
     case .transient:
-      dependencies[name] = {
-        factory(Self.shared)
-      }
+      entry = .factory { factory(self) }
+    }
+
+    locked {
+      guard dependencies[key] == nil else { fatalError(alreadyRegistered()) }
+      dependencies[key] = Registration(typeName: "\(type)", entry: entry)
     }
   }
 
@@ -104,25 +109,24 @@ public final class Container: Registerable {
   /// let namedService: MyService = Container.shared.resolve(MyService.self, name: "Primary")
   /// ```
   public func resolve<Dependency>(_ type: Dependency.Type, name: String? = nil) -> Dependency {
-    let name = name ?? "\(type)"
-
-    if let dependency = dependencies[name] as? Dependency {
+    if let dependency = lookup(type, name: name) {
       return dependency
     }
 
-    if let dependency = dependencies[name] as? () -> Dependency {
-      return dependency()
-    }
-
-    // Find related dependencies (those containing the type name or requested name)
+    // Find related dependencies (those whose type or name mentions the requested type or name)
     let typeName = "\(type)"
-    let relatedDependencies = dependencies.keys
-      .filter { key in
-        key.localizedCaseInsensitiveContains(typeName)
-          || (name != typeName && key.localizedCaseInsensitiveContains(name)) || key.contains(name)
-          || key.contains(typeName)
-      }
-      .sorted()
+    let name = name ?? typeName
+    let relatedDependencies = locked {
+      dependencies
+        .filter { key, registration in
+          [typeName, name].contains {
+            registration.typeName.localizedCaseInsensitiveContains($0)
+              || key.name.localizedCaseInsensitiveContains($0)
+          }
+        }
+        .map { key, registration in "\(key.name) (\(registration.typeName))" }
+    }
+    .sorted()
 
     if relatedDependencies.isEmpty {
       fatalError("Dependency not found for type '\(type)' with name '\(name)'. No similar dependencies registered.")
@@ -158,17 +162,7 @@ public final class Container: Registerable {
   /// }
   /// ```
   public func tryResolve<Dependency>(_ type: Dependency.Type, name: String? = nil) -> Dependency? {
-    let name = name ?? "\(type)"
-
-    if let dependency = dependencies[name] as? Dependency {
-      return dependency
-    }
-
-    if let dependency = dependencies[name] as? () -> Dependency {
-      return dependency()
-    }
-
-    return nil
+    lookup(type, name: name)
   }
 
   /// Removes a registered dependency from the container.
@@ -189,11 +183,9 @@ public final class Container: Registerable {
   /// Container.shared.unregister(MyService.self, name: "Primary")
   /// ```
   public func unregister<Dependency>(_ type: Dependency.Type, name: String? = nil) {
-    lock.lock()
-    defer { lock.unlock() }
-
-    let name = name ?? "\(type)"
-    dependencies.removeValue(forKey: name)
+    locked {
+      _ = dependencies.removeValue(forKey: Key(type, name: name))
+    }
   }
 
   /// Removes all registered dependencies from the container.
@@ -210,9 +202,51 @@ public final class Container: Registerable {
   /// }
   /// ```
   public func reset() {
+    locked {
+      dependencies.removeAll()
+    }
+  }
+}
+
+private extension Container {
+  struct Key: Hashable {
+    let type: ObjectIdentifier
+    let name: String
+
+    init<Dependency>(_ type: Dependency.Type, name: String?) {
+      self.type = ObjectIdentifier(type)
+      self.name = name ?? "\(type)"
+    }
+  }
+
+  struct Registration {
+    enum Entry {
+      case instance(Any)
+      case factory(() -> Any)
+    }
+
+    /// Kept for error messages, since `ObjectIdentifier` isn't readable.
+    let typeName: String
+    let entry: Entry
+  }
+
+  func lookup<Dependency>(_ type: Dependency.Type, name: String?) -> Dependency? {
+    let registration = locked { dependencies[Key(type, name: name)] }
+
+    // Transient factories run outside the lock so they can resolve their own dependencies.
+    switch registration?.entry {
+    case .instance(let instance):
+      return instance as? Dependency
+    case .factory(let factory):
+      return factory() as? Dependency
+    case nil:
+      return nil
+    }
+  }
+
+  func locked<T>(_ body: () throws -> T) rethrows -> T {
     lock.lock()
     defer { lock.unlock() }
-
-    dependencies.removeAll()
+    return try body()
   }
 }

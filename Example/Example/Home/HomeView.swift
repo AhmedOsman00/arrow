@@ -29,6 +29,9 @@ struct HomeView: View {
         .buttonStyle(.bordered)
       }
 
+      CounterDetailView(viewModel: viewModel)
+        .padding(.horizontal)
+
       TextField("Update greeting", text: $viewModel.greeting)
         .textFieldStyle(.roundedBorder)
         .padding(.horizontal)

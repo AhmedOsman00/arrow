@@ -1,10 +1,12 @@
+import Arrow
 import SwiftUI
 
 struct MoreViewControllerWrapper: UIViewControllerRepresentable {
-  let factory: MoreFactory
+  @ViewModel var viewModel: MoreViewModel
 
   func makeUIViewController(context: Context) -> MoreViewController {
-    factory.makeMoreViewController()
+    let coordinator = MoreCoordinator(root: "More")
+    return MoreViewController(viewModel: viewModel, coordinator: coordinator)
   }
 
   func updateUIViewController(_ uiViewController: MoreViewController, context: Context) {
