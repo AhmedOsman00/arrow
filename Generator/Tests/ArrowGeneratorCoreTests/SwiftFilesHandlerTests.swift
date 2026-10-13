@@ -128,6 +128,59 @@ final class SwiftFilesHandlerTests: XCTestCase {
     XCTAssertEqual(result.count, 1)
   }
 
+  func testGenerateDependenciesFile_ExternalPathSatisfiesValidationButIsNotEmitted() throws {
+    let tempDir = createTempDirectory()
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    // The external package lives inside the app root, as in the Example project.
+    let externalDir = tempDir.appendingPathComponent("Packages/Analytics")
+    try FileManager.default.createDirectory(at: externalDir, withIntermediateDirectories: true)
+    try createFile(
+      at: externalDir, name: "AnalyticsModule.swift",
+      content: """
+        import Arrow
+        public struct AnalyticsModule: SingletonScope {
+          public init() {}
+          public func provideAnalytics() -> Analytics { AnalyticsImpl() }
+        }
+        """)
+    try createFile(
+      at: tempDir, name: "HomeModule.swift",
+      content: """
+        import Arrow
+        import Analytics
+        final class HomeModule: TransientScope {
+          func provideViewModel(analytics: Analytics) -> HomeViewModel { HomeViewModel(analytics: analytics) }
+        }
+        """)
+
+    let file = try sut.generateDependenciesFile(
+      paths: [tempDir.path],
+      externalPaths: [externalDir.path],
+      registry: .fixture)
+
+    XCTAssertTrue(file.contains("enum AppDependencies: DependencyRegistry"))
+    XCTAssertTrue(file.contains("homeModule.provideViewModel("))
+    XCTAssertTrue(file.contains("analytics: resolver.resolve(Analytics.self)"))
+    XCTAssertFalse(file.contains("AnalyticsModule"), "External providers must not be emitted")
+  }
+
+  func testGenerateDependenciesFile_WithoutExternalPath_ReportsMissingDependency() throws {
+    let tempDir = createTempDirectory()
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    try createFile(
+      at: tempDir, name: "HomeModule.swift",
+      content: """
+        final class HomeModule: TransientScope {
+          func provideViewModel(analytics: Analytics) -> HomeViewModel { HomeViewModel(analytics: analytics) }
+        }
+        """)
+
+    XCTAssertThrowsError(
+      try sut.generateDependenciesFile(paths: [tempDir.path], externalPaths: [], registry: .fixture))
+  }
+
   // MARK: - Helper Methods
 
   private func git(_ arguments: [String], in directory: URL) throws {

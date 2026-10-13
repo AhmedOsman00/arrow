@@ -113,7 +113,7 @@ Visitor pattern implementation that identifies dependency modules.
 
 **Detects**:
 - Classes, structs, and extensions
-- Conformance to `SingletonScope` or `TransientScope`
+- Conformance to `SingletonScope`, `LazySingletonScope` or `TransientScope`
 - Import statements
 
 **Output**: Set of `DependencyModule` instances
@@ -187,7 +187,7 @@ Transforms parsed data into UI models suitable for code generation.
 
 **Responsibilities**:
 - Map `DependencyModule` → `DependencyUiModel`
-- Sort dependencies by topological order
+- Sort dependencies by topological order, skipping ones provided by external registries (`--external-path`)
 - Collect all required imports
 
 #### DependencyFile
@@ -195,8 +195,8 @@ Generates Swift source code using SwiftSyntax builders.
 
 **Generates**:
 - Import declarations
-- `Container` extension
-- `register()` method
+- A `DependencyRegistry` enum (`public` in package mode)
+- Its `static func register(in container: Container)` method
 - Module instantiations
 - Dependency registration calls with closures
 
