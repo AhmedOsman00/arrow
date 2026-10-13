@@ -70,6 +70,8 @@ jobs:
           HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
           brew tap ${{ github.repository_owner }}/homebrew-tap
+          # Homebrew refuses to load formulas from third-party taps unless they are trusted.
+          brew trust ${{ github.repository_owner }}/tap
           brew bump-formula-pr -f --version=$VERSION --no-browse --no-audit \
             --sha256=$SHA256 \
             --url="$BINARY_URL" \
