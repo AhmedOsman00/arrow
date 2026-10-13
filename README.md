@@ -58,7 +58,7 @@ Run the generator to create registration code automatically:
 
 ```bash
 # For Swift Packages
-arrow generate --is-package --package-sources-path Sources/YourPackage
+arrow generate --is-package --package-path Sources/YourPackage
 
 # For Xcode Projects (or with no arguments from a Run Script build phase)
 arrow generate --proj-root /path/to/YourApp
@@ -68,13 +68,16 @@ See the [Arrow Generator documentation](https://github.com/AhmedOsman00/arrow-ge
 
 ### 3. Register at App Startup
 
-Call the generated registration method:
+The generator creates a `DependencyRegistry` per app target or package (for example `AppDependencies`). Register them at startup, passing registries before the ones that depend on them:
 
 ```swift
 @main
 struct MyApp: App {
     init() {
-        Container.shared.register()
+        Container.shared.register(
+            CoreDependencies.self,   // from a package
+            AppDependencies.self     // from the app target
+        )
     }
 
     var body: some Scene {
@@ -135,6 +138,16 @@ final class AppModule: SingletonScope {
 }
 ```
 
+**LazySingletonScope** - Created once, on first resolve, then cached. Use it for expensive dependencies that aren't needed at launch:
+
+```swift
+final class StorageModule: LazySingletonScope {
+    var database: Database {
+        Database()  // Created on first resolve
+    }
+}
+```
+
 **TransientScope** - New instance on each resolve:
 
 ```swift
@@ -147,7 +160,7 @@ final class ViewModelModule: TransientScope {
 
 ## Module Rules
 
-1. Modules must conform to `SingletonScope` or `TransientScope`
+1. Modules must conform to `SingletonScope`, `LazySingletonScope` or `TransientScope`
 2. Modules must have a no-parameter `init()`
 3. Only computed properties and functions with return types are scanned
 4. Function parameters without defaults are treated as injectable dependencies
@@ -175,7 +188,8 @@ let repository = Container.shared.resolve(UserRepository.self)
 ## Example Project
 
 See the [Example](./Example) directory for a complete iOS app demonstrating:
-- Multiple modules with different scopes
+- Multiple modules with different scopes, including a lazy singleton
+- A registry per package (`CoreDependencies`, `AnalyticsDependencies`) plus one for the app
 - Named dependencies
 - SwiftUI integration
 - Analytics integration pattern

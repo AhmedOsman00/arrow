@@ -1,9 +1,12 @@
-/// Base protocol requiring a default initializer.
+/// Base protocol for dependency modules, requiring a default initializer.
 ///
 /// Used as a constraint for module scope protocols to ensure modules can be instantiated.
-public protocol Default {
+public protocol DependencyModule {
   init()
 }
+
+@available(*, deprecated, renamed: "DependencyModule")
+public typealias Default = DependencyModule
 
 /// Marker protocol for modules that provide transient-scoped dependencies.
 ///
@@ -21,7 +24,7 @@ public protocol Default {
 ///     }
 /// }
 /// ```
-public protocol TransientScope: Default {}
+public protocol TransientScope: DependencyModule {}
 
 /// Marker protocol for modules that provide singleton-scoped dependencies.
 ///
@@ -39,15 +42,36 @@ public protocol TransientScope: Default {}
 ///     }
 /// }
 /// ```
-public protocol SingletonScope: Default {}
+public protocol SingletonScope: DependencyModule {}
+
+/// Marker protocol for modules that provide lazily created singleton dependencies.
+///
+/// Lazy singleton dependencies are created once, on first resolution, and reused afterwards.
+/// Use this for expensive dependencies that aren't needed at launch.
+///
+/// ## Example
+/// ```swift
+/// final class MyModule: LazySingletonScope {
+///     init() {}
+///
+///     func provideDatabase() -> Database {
+///         Database() // Created on first resolve, then cached
+///     }
+/// }
+/// ```
+public protocol LazySingletonScope: DependencyModule {}
 
 /// Defines the lifecycle scope for dependency instances.
 ///
 /// - `singleton`: Instance created once during registration and cached for reuse
+/// - `lazySingleton`: Instance created once on first resolution and cached for reuse
 /// - `transient`: New instance created on each resolution
 public enum DependencyScope {
   /// Instance created once during registration and cached for reuse.
   case singleton
+
+  /// Instance created once on first resolution and cached for reuse.
+  case lazySingleton
 
   /// New instance created on each resolution.
   case transient

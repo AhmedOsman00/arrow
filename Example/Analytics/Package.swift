@@ -16,13 +16,14 @@ let package = Package(
     )
   ],
   dependencies: [
-    .package(url: "https://github.com/AhmedOsman00/arrow.git", from: "1.0.0")
+    // Local checkout so the Example always builds against this repository's Arrow.
+    .package(path: "../..")
   ],
   targets: [
     .target(
       name: "Analytics",
       dependencies: [
-        .product(name: "Arrow", package: "Arrow")
+        .product(name: "Arrow", package: "arrow")
       ]
     )
 

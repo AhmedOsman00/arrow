@@ -174,7 +174,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				F79FF7222F0AC29000A8B624 /* XCLocalSwiftPackageReference "Analytics" */,
-				F79FF7252F0AC2B300A8B624 /* XCRemoteSwiftPackageReference "arrow" */,
+				F79FF7252F0AC2B300A8B624 /* XCLocalSwiftPackageReference ".." */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F79FF6F42F0AC20A00A8B624 /* Products */;
@@ -430,18 +430,11 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Analytics;
 		};
-/* End XCLocalSwiftPackageReference section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		F79FF7252F0AC2B300A8B624 /* XCRemoteSwiftPackageReference "arrow" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/AhmedOsman00/arrow";
-			requirement = {
-				kind = exactVersion;
-				version = 1.0.1;
-			};
+		F79FF7252F0AC2B300A8B624 /* XCLocalSwiftPackageReference ".." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ..;
 		};
-/* End XCRemoteSwiftPackageReference section */
+/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		F79FF7232F0AC29000A8B624 /* Analytics */ = {
@@ -450,7 +443,7 @@
 		};
 		F79FF7262F0AC2B300A8B624 /* Arrow */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = F79FF7252F0AC2B300A8B624 /* XCRemoteSwiftPackageReference "arrow" */;
+			package = F79FF7252F0AC2B300A8B624 /* XCLocalSwiftPackageReference ".." */;
 			productName = Arrow;
 		};
 		F79FF7292F0AC2CE00A8B624 /* Core */ = {
