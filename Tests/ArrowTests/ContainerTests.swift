@@ -106,6 +106,81 @@ final class ContainerTests: XCTestCase {
     XCTAssertEqual(secondary.id, "secondary")
   }
 
+  func testSameNameForDifferentTypesDoesNotCollide() {
+    // Given
+    Container.shared.register(TestService.self, name: "shared") { _ in
+      TestServiceImpl(id: "service")
+    }
+    Container.shared.register(TestCounter.self, name: "shared") { _ in
+      TestCounter()
+    }
+
+    // When
+    let service: TestService? = Container.shared.tryResolve(TestService.self, name: "shared")
+    let counter: TestCounter? = Container.shared.tryResolve(TestCounter.self, name: "shared")
+
+    // Then
+    XCTAssertEqual(service?.id, "service")
+    XCTAssertNotNil(counter)
+  }
+
+  func testTypeNameAsExplicitNameMatchesUnnamedResolution() {
+    // Given: generated code always passes the type name explicitly
+    Container.shared.register(TestService.self, name: "TestService") { _ in
+      TestServiceImpl(id: "generated")
+    }
+
+    // When
+    let resolved: TestService = Container.shared.resolve(TestService.self)
+
+    // Then
+    XCTAssertEqual(resolved.id, "generated")
+  }
+
+  func testSingletonFactoryCanResolveAndRegister() {
+    // Given
+    Container.shared.register(TestService.self) { _ in
+      TestServiceImpl(id: "inner")
+    }
+
+    // When: the factory runs during registration and calls back into the container
+    Container.shared.register(TestCounter.self, objectScope: .singleton) { resolver in
+      _ = resolver.resolve(TestService.self)
+      resolver.register(TestService.self, name: "registeredByFactory") { _ in
+        TestServiceImpl(id: "nested")
+      }
+      return TestCounter()
+    }
+
+    // Then
+    let nested: TestService? = Container.shared.tryResolve(TestService.self, name: "registeredByFactory")
+    XCTAssertEqual(nested?.id, "nested")
+  }
+
+  func testConcurrentRegistrationAndResolution() {
+    // Given
+    Container.shared.register(TestService.self) { _ in
+      TestServiceImpl(id: "concurrent")
+    }
+
+    // When
+    DispatchQueue.concurrentPerform(iterations: 1_000) { index in
+      let name = "service-\(index)"
+      Container.shared.register(TestService.self, name: name) { _ in
+        TestServiceImpl(id: name)
+      }
+      let shared: TestService = Container.shared.resolve(TestService.self)
+      let own: TestService? = Container.shared.tryResolve(TestService.self, name: name)
+      XCTAssertEqual(shared.id, "concurrent")
+      XCTAssertEqual(own?.id, name)
+      Container.shared.unregister(TestService.self, name: name)
+    }
+
+    // Then
+    let leftover: TestService? = Container.shared.tryResolve(TestService.self, name: "service-0")
+    XCTAssertNil(leftover)
+  }
+
   // MARK: - Error Handling Tests
   func testTryResolveReturnsNilForMissingDependency() {
     // When

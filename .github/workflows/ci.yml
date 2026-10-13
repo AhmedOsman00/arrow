@@ -16,15 +16,17 @@ jobs:
       - name: Setup Swift
         uses: ./.github/actions/setup-swift
 
+      # Keyed on the pinned Mintfile, so SwiftLint is only rebuilt when its version changes.
+      # PRs can read caches saved on main (see cache-mint.yml).
       - name: Cache Mint
         uses: actions/cache@v5
         with:
           path: ~/.mint
-          key: ${{ runner.os }}-mint-${{ hashFiles('**/Mintfile') }}
-          restore-keys: |
-            ${{ runner.os }}-mint-
+          key: ${{ runner.os }}-mint-${{ hashFiles('Mintfile') }}
 
       - name: Install Swift Dependencies
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
         run: |
           brew bundle
           mint bootstrap
@@ -35,10 +37,19 @@ jobs:
       - name: Run Tests
         run: make test
 
+      - name: Generate coverage report
+        run: |
+          xcrun llvm-cov export -format="lcov" \
+            .build/debug/ArrowPackageTests.xctest/Contents/MacOS/ArrowPackageTests \
+            -instr-profile .build/debug/codecov/default.profdata \
+            > coverage.lcov
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
+          files: ./coverage.lcov
           fail_ci_if_error: false
           verbose: true
+          flags: swift
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

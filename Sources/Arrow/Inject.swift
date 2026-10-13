@@ -1,3 +1,5 @@
+import Foundation
+
 /// Property wrapper for automatic dependency injection with non-optional resolution.
 /// Caches the resolved value to avoid repeated lookups.
 /// Fatal error if dependency cannot be resolved.
@@ -15,12 +17,7 @@ public struct Inject<T> {
   private let cache: Cache<T>
 
   public var wrappedValue: T {
-    if let cached = cache.value {
-      return cached
-    }
-    let resolved = Container.shared.resolve(T.self, name: name)
-    cache.value = resolved
-    return resolved
+    cache.value { Container.shared.resolve(T.self, name: name) }
   }
 
   public init(name: String? = nil) {
@@ -28,8 +25,21 @@ public struct Inject<T> {
     self.cache = Cache()
   }
 
-  private final class Cache<Value> {
-    var value: Value?
+  private final class Cache<Value>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cached: Value?
+
+    func value(orResolve resolve: () -> Value) -> Value {
+      lock.lock()
+      defer { lock.unlock() }
+
+      if let cached {
+        return cached
+      }
+      let resolved = resolve()
+      cached = resolved
+      return resolved
+    }
   }
 }
 

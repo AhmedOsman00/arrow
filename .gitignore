@@ -4,7 +4,6 @@
 
 # Xcode project/workspace settings
 *.xcworkspace/
-*.xcodeproj/
 *.xcodeproj/project.xcworkspace/
 .idea/
 .DS_Store
@@ -22,6 +21,7 @@ xcuserdata/
 *.swo
 *.DS_Store
 Thumbs.db
+.bundle/
 
 # Generated documentation
 docs/

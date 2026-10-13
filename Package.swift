@@ -17,7 +17,7 @@ let package = Package(
     .library(name: "Arrow", targets: ["Arrow"])
   ],
   dependencies: [
-    .package(url: "https://github.com/swiftlang/swift-syntax.git", exact: "602.0.0"),
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", "600.0.0"..<"700.0.0"),
     .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.4.5"),
   ],
   targets: [
@@ -35,6 +35,10 @@ let package = Package(
     ),
     .testTarget(
       name: "ArrowTests",
-      dependencies: ["Arrow"]),
+      dependencies: [
+        "Arrow",
+        "Macros",
+        .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
+      ]),
   ]
 )

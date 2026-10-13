@@ -58,10 +58,10 @@ Run the generator to create registration code automatically:
 
 ```bash
 # For Swift Packages
-swift package plugin arrow-generator
+arrow generate --is-package --package-sources-path Sources/YourPackage
 
-# For Xcode Projects
-arrow generate --project-path YourApp.xcodeproj
+# For Xcode Projects (or with no arguments from a Run Script build phase)
+arrow generate --proj-root /path/to/YourApp
 ```
 
 See the [Arrow Generator documentation](https://github.com/AhmedOsman00/arrow-generator) for installation and detailed usage.
@@ -185,12 +185,11 @@ See the [Example](./Example) directory for a complete iOS app demonstrating:
 - **Swift**: 6.0+
 - **Xcode**: 16.0+
 - **Platforms**: iOS 13+, macOS 10.15+, tvOS 13+, watchOS 6+, macCatalyst 13+
-- **Code Generator**: [Arrow Generator](https://github.com/AhmedOsman00/arrow-generator) CLI or SPM Plugin
+- **Code Generator**: [Arrow Generator](https://github.com/AhmedOsman00/arrow-generator) CLI
 
 ## Related Projects
 
 - [Arrow Generator](https://github.com/AhmedOsman00/arrow-generator) - Code generation CLI tool
-- [Arrow Generator Plugin](https://github.com/AhmedOsman00/arrow-generator-plugin) - SPM plugin wrapper
 
 ## Contributing
 

@@ -1,3 +1,5 @@
+import Foundation
+
 /// Property wrapper for automatic dependency injection with optional resolution.
 /// Caches the resolved value to avoid repeated lookups.
 /// Returns nil if dependency cannot be resolved instead of crashing.
@@ -15,12 +17,7 @@ public struct Autowire<T> {
   private let cache: Cache<T>
 
   public var wrappedValue: T? {
-    if cache.isInitialized {
-      return cache.value
-    }
-    cache.value = Container.shared.tryResolve(T.self, name: name)
-    cache.isInitialized = true
-    return cache.value
+    cache.value { Container.shared.tryResolve(T.self, name: name) }
   }
 
   public init(name: String? = nil) {
@@ -28,8 +25,20 @@ public struct Autowire<T> {
     self.cache = Cache()
   }
 
-  private final class Cache<Value> {
-    var value: Value?
-    var isInitialized = false
+  private final class Cache<Value>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cached: Value?
+    private var isInitialized = false
+
+    func value(orResolve resolve: () -> Value?) -> Value? {
+      lock.lock()
+      defer { lock.unlock() }
+
+      if !isInitialized {
+        cached = resolve()
+        isInitialized = true
+      }
+      return cached
+    }
   }
 }
