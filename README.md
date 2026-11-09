@@ -54,17 +54,36 @@ final class AppModule: SingletonScope {
 
 ### 2. Generate Registration Code
 
-Run the generator to create registration code automatically:
+Install the [Arrow Generator](https://github.com/AhmedOsman00/arrow-generator):
 
 ```bash
-# For Swift Packages
-arrow generate --is-package --package-path Sources/YourPackage
-
-# For Xcode Projects (or with no arguments from a Run Script build phase)
-arrow generate --proj-root /path/to/YourApp
+brew install --cask AhmedOsman00/tap/arrow
 ```
 
-See the [Arrow Generator documentation](https://github.com/AhmedOsman00/arrow-generator) for installation and detailed usage.
+**Xcode app targets** run it from a build phase, so the registry is regenerated on every build:
+
+1. Create an empty `dependencies.generated.swift` in the project root and add it to your target.
+2. In the target's Build Settings, set **User Script Sandboxing** (`ENABLE_USER_SCRIPT_SANDBOXING`) to **No**, since the generator has to read all your Swift files.
+3. Add a Run Script phase above **Compile Sources**, and uncheck **Based on dependency analysis**:
+
+   ```bash
+   export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin"
+
+   if command -v arrow >/dev/null; then
+     arrow generate
+   else
+     echo "error: Arrow Generator is not installed. Run: brew install --cask AhmedOsman00/tap/arrow"
+     exit 1
+   fi
+   ```
+
+The script needs no arguments: it reads Xcode's build settings. Configure it per target with `ARROW_*` build settings, for example `ARROW_EXTERNAL_PATHS` for dependencies provided by another registry. See [Running From Xcode](https://github.com/AhmedOsman00/arrow-generator#running-from-xcode) for every setting.
+
+**Swift packages** run it from the command line, or a `Makefile` target:
+
+```bash
+arrow generate --is-package --package-path Sources/YourPackage
+```
 
 ### 3. Register at App Startup
 
