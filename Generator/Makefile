@@ -2,10 +2,11 @@
 BUILD_DIR := .build
 OUTPUT_DIR := bin
 OUTPUT := $(OUTPUT_DIR)/arrow
-SWIFT_VERSION := $(shell cat .swift-version 2>/dev/null || echo "6.0")
+# Setup and tooling versions are shared with Arrow at the repo root (run `make bootstrap` there).
+SWIFT_VERSION := $(shell cat ../.swift-version 2>/dev/null || echo "6.0")
 SWIFT_BUILD_FLAGS := -c release --arch x86_64 --arch arm64 -Xswiftc -swift-version -Xswiftc $(SWIFT_VERSION)
 
-.PHONY: all build test lint install-hooks clean bootstrap help docs generate-version
+.PHONY: all build test lint clean help generate-version
 
 # Default target
 all: build
@@ -13,10 +14,6 @@ all: build
 # Show available commands
 help:
 	@echo "Available targets:"
-	@echo ""
-	@echo "Setup:"
-	@echo "  make bootstrap     - Complete project setup (recommended for first-time setup)"
-	@echo "  make install-hooks - Install git pre-commit hooks"
 	@echo ""
 	@echo "Development:"
 	@echo "  make build         - Build universal release binary"
@@ -27,56 +24,6 @@ help:
 	@echo "Other:"
 	@echo "  make clean         - Remove build artifacts"
 	@echo "  make all           - Build (default target)"
-
-# Complete development environment setup
-bootstrap:
-	@echo "🚀 Starting Arrow Generator development environment setup..."
-	@echo ""
-	@# Check for Homebrew
-	@if ! which brew > /dev/null 2>&1; then \
-		echo "❌ Homebrew not found."; \
-		echo ""; \
-		echo "Install Homebrew first:"; \
-		echo "  /bin/bash -c \"\$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""; \
-		echo ""; \
-		echo "Then run 'make bootstrap' again."; \
-		exit 1; \
-	fi
-	@echo "✅ Homebrew is installed"
-	@echo ""
-	@# Install Homebrew dependencies
-	@echo "📦 Installing Homebrew dependencies (Brewfile)..."
-	@brew bundle || { echo "❌ Failed to install Homebrew dependencies"; exit 1; }
-	@echo "✅ Homebrew dependencies installed"
-	@echo ""
-	@# Install Mint dependencies
-	@echo "📦 Installing Swift tool dependencies (Mintfile)..."
-	@mint bootstrap || { echo "❌ Failed to install Mint dependencies"; exit 1; }
-	@echo "✅ Mint dependencies installed"
-	@echo ""
-	@# Install git hooks
-	@$(MAKE) install-hooks
-	@echo ""
-	@# Verify environment
-	@echo "🔍 Verifying environment setup..."
-	@if which swift > /dev/null 2>&1; then \
-		SWIFT_VERSION=$$(swift --version | head -n1 | awk '{print $$4}'); \
-		EXPECTED_VERSION=$$(cat .swift-version 2>/dev/null || echo "unknown"); \
-		echo "✅ Swift: $$SWIFT_VERSION"; \
-		if [ "$$SWIFT_VERSION" != "$$EXPECTED_VERSION" ] && [ "$$EXPECTED_VERSION" != "unknown" ]; then \
-			echo "   ⚠️  Expected version: $$EXPECTED_VERSION"; \
-			echo "   ℹ️  Consider using 'xcodes' to manage Xcode versions"; \
-		fi; \
-	else \
-		echo "❌ Swift: Not found"; exit; \
-	fi
-	@echo ""
-	@echo "✅ Bootstrap complete! Your development environment is ready."
-	@echo ""
-	@echo "Next steps:"
-	@echo "  make build    - Build the project"
-	@echo "  make test     - Run tests"
-	@echo "  make help     - See all available commands"
 
 # Generate version from git tags
 generate-version:
@@ -102,27 +49,13 @@ test:
 lint:
 	@which mint > /dev/null || { echo "⚠️  Mint not installed. Run: brew install mint"; exit 1; }
 	@echo "🔍 Running SwiftLint..."
-	@mint run swiftlint swiftlint --strict --reporter github-actions-logging
+	@mint run --mintfile ../Mintfile swiftlint swiftlint --strict --reporter github-actions-logging
 	@echo "✅ Linting complete."
-	
+
 # Clean build artifacts
 clean:
 	@echo "🧹 Cleaning build artifacts..."
 	@rm -rf $(BUILD_DIR)
 	@rm -rf $(OUTPUT_DIR)
-	@rm -rf docs
 	@rm -f Sources/Constants/Version.generated.swift
 	@echo "✅ Clean complete."
-
-# Install git hooks
-install-hooks:
-	@echo "📦 Installing git hooks..."
-	@if [ ! -d ".git" ]; then \
-		echo "❌ Not a git repository. Cannot install hooks."; \
-		exit 1; \
-	fi
-	@mkdir -p .git/hooks
-	@cp scripts/git-hooks/pre-commit .git/hooks/pre-commit
-	@chmod +x .git/hooks/pre-commit
-	@echo "✅ Git hooks installed."
-	@echo "   Pre-commit hook will auto-fix SwiftLint issues before commits."

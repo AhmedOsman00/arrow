@@ -2,7 +2,7 @@
 BUILD_DIR := .build
 SWIFT_BUILD_FLAGS := -c release
 
-.PHONY: all build test lint install-hooks clean bootstrap help docs
+.PHONY: all build build-generator generate-version test lint install-hooks clean bootstrap help docs
 
 # Default target
 all: build
@@ -16,9 +16,10 @@ help:
 	@echo "  make install-hooks - Install git pre-commit hooks"
 	@echo ""
 	@echo "Development:"
-	@echo "  make build         - Build universal release binary"
-	@echo "  make test          - Run test suite"
-	@echo "  make lint          - Run SwiftLint in strict mode"
+	@echo "  make build         - Build the Arrow library"
+	@echo "  make build-generator - Build the universal generator binary into Generator/bin/arrow"
+	@echo "  make test          - Run both packages' test suites"
+	@echo "  make lint          - Run SwiftLint in strict mode on both packages"
 	@echo ""
 	@echo "Other:"
 	@echo "  make docs          - Generate documentation"
@@ -27,7 +28,7 @@ help:
 
 # Complete development environment setup
 bootstrap:
-	@echo "🚀 Starting Arrow Generator development environment setup..."
+	@echo "🚀 Starting Arrow development environment setup..."
 	@echo ""
 	@# Check for Homebrew
 	@if ! which brew > /dev/null 2>&1; then \
@@ -81,11 +82,20 @@ build:
 	@swift build $(SWIFT_BUILD_FLAGS)
 	@echo "✅ Build complete"
 
+# Build the generator (see Generator/Makefile)
+build-generator:
+	@$(MAKE) -C Generator build
+
+# Write the generator's version constant, e.g. `make generate-version VERSION=2.1.0`
+generate-version:
+	@$(MAKE) -C Generator generate-version VERSION="$(VERSION)"
+
 # Run tests
 test:
 	@echo "🧪 Running tests..."
 	@swift test --enable-code-coverage
 	@echo "✅ Tests passed."
+	@$(MAKE) -C Generator test
 
 # Lint Swift files using SwiftLint (via Mint)
 lint:
@@ -93,6 +103,7 @@ lint:
 	@echo "🔍 Running SwiftLint..."
 	@mint run swiftlint swiftlint --strict --reporter github-actions-logging
 	@echo "✅ Linting complete."
+	@$(MAKE) -C Generator lint
 
 # Generate documentation
 docs:
@@ -111,6 +122,7 @@ clean:
 	@rm -rf $(BUILD_DIR)
 	@rm -rf docs
 	@echo "✅ Clean complete."
+	@$(MAKE) -C Generator clean
 
 # Install git hooks
 install-hooks:
