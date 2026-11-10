@@ -184,7 +184,11 @@ final class ViewModelModule: TransientScope {
 3. Only computed properties and functions with return types are scanned
 4. Function parameters without defaults are treated as injectable dependencies
 5. Use `@Named("...")` to reference named dependencies in parameters
-6. Use `@Name("...")` macro to mark providers that create named dependencies
+6. Use `@Name("...")` macro to mark providers that create named dependencies. It lives in the opt-in
+   `ArrowMacros` product (`import ArrowMacros`), so only targets that use it build swift-syntax
+7. Optional parameters (`cache: Cache?`) are resolved with `tryResolve`, so they're `nil` when nothing provides them
+8. A `@MainActor` module gets a `@MainActor` registry; give the module a `nonisolated init()`. Resolve its
+   dependencies on the main thread: their factories check and crash otherwise
 
 ## Manual Registration
 
@@ -202,6 +206,21 @@ Container.shared.register(UserRepository.self, objectScope: .singleton) { resolv
 
 // Resolve
 let repository = Container.shared.resolve(UserRepository.self)
+```
+
+Resolution is thread-safe. A lazy singleton whose factory ends up resolving itself crashes with a "Circular dependency" message instead of deadlocking.
+
+## Testing With an Isolated Container
+
+`Container.shared` is global. Tests can create their own container instead, so they don't share state or need `reset()`:
+
+```swift
+let container = Container()
+container.register(AppDependencies.self)
+container.register(APIClient.self, objectScope: .singleton) { _ in MockAPIClient() }
+
+// Property wrappers resolve from `Container.shared` unless given a container
+@Inject(container: container) var repository: UserRepository
 ```
 
 ## Example Project

@@ -412,21 +412,23 @@ final class ContainerTests: XCTestCase {
     XCTAssertEqual(instance.service?.id, "autowired")
   }
 
-  func testAutowirePropertyWrapperCachesNil() {
-    // When
+  func testAutowirePropertyWrapperResolvesDependencyRegisteredLater() {
+    // Given
     class TestClass {
       @Autowire var counter: TestCounter?
     }
     let instance = TestClass()
+    XCTAssertNil(instance.counter)
 
-    // Access multiple times
+    // When
+    Container.shared.register(TestCounter.self) { _ in TestCounter() }
     let first = instance.counter
     let second = instance.counter
 
     // Then
-    XCTAssertNil(first)
-    XCTAssertNil(second)
-    XCTAssertEqual(TestCounter.creationCount, 0, "Should not create any instances")
+    XCTAssertNotNil(first)
+    XCTAssertTrue(first === second, "Property wrapper should cache the value once resolved")
+    XCTAssertEqual(TestCounter.creationCount, 1, "Should only resolve once")
   }
 
   func testNamedInjectPropertyWrapper() {
@@ -444,5 +446,41 @@ final class ContainerTests: XCTestCase {
 
     // Then
     XCTAssertEqual(instance.service.id, "custom-service")
+  }
+}
+
+// MARK: - Isolated containers
+
+/// Containers used through property wrappers must outlive the wrapped properties' owners.
+private let isolatedContainer = Container()
+
+extension ContainerTests {
+  func testIsolatedContainersDoNotShareRegistrations() {
+    let first = Container()
+    let second = Container()
+
+    first.register(TestService.self) { _ in TestServiceImpl(id: "first") }
+    second.register(BaseRegistry.self)
+
+    XCTAssertEqual(first.resolve(TestService.self).id, "first")
+    XCTAssertEqual(second.resolve(TestService.self).id, "base")
+    XCTAssertNil(Container.shared.tryResolve(TestService.self))
+  }
+
+  func testPropertyWrappersResolveFromGivenContainer() {
+    isolatedContainer.reset()
+    isolatedContainer.register(TestService.self) { _ in TestServiceImpl(id: "isolated") }
+    Container.shared.register(TestService.self) { _ in TestServiceImpl(id: "shared") }
+
+    struct Consumer {
+      @Inject(container: isolatedContainer)
+      var injected: TestService
+      @Autowire(container: isolatedContainer)
+      var autowired: TestService?
+    }
+    let consumer = Consumer()
+
+    XCTAssertEqual(consumer.injected.id, "isolated")
+    XCTAssertEqual(consumer.autowired?.id, "isolated")
   }
 }

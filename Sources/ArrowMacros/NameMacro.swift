@@ -6,8 +6,13 @@
 ///
 /// - Parameter value: The custom name for this dependency provider
 ///
+/// Declared in the opt-in `ArrowMacros` product, so only targets that use it build swift-syntax.
+///
 /// ## Usage
 /// ```swift
+/// import Arrow
+/// import ArrowMacros
+///
 /// final class MyModule: TransientScope {
 ///     @Name("Primary")
 ///     func providePrimaryService() -> MyService {

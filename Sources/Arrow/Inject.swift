@@ -9,19 +9,25 @@ import Foundation
 /// class MyViewController {
 ///     @Inject var service: MyService
 ///     @Inject(name: "custom") var customService: MyService
+///     @Inject(container: featureContainer) var isolatedService: MyService
 /// }
 /// ```
 @propertyWrapper
 public struct Inject<T> {
   private let name: String?
+  private let container: Container
   private let cache: Cache<T>
 
   public var wrappedValue: T {
-    cache.value { Container.shared.resolve(T.self, name: name) }
+    cache.value { container.resolve(T.self, name: name) }
   }
 
-  public init(name: String? = nil) {
+  /// - Parameters:
+  ///   - name: Optional custom name for named dependencies. If nil, uses the type name
+  ///   - container: The container to resolve from
+  public init(name: String? = nil, container: Container = .shared) {
     self.name = name
+    self.container = container
     self.cache = Cache()
   }
 

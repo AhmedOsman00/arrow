@@ -18,6 +18,7 @@
 		F79FF71E2F0AC22C00A8B624 /* MoreRemoteService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F79FF7122F0AC22C00A8B624 /* MoreRemoteService.swift */; };
 		F79FF7242F0AC29000A8B624 /* Analytics in Frameworks */ = {isa = PBXBuildFile; productRef = F79FF7232F0AC29000A8B624 /* Analytics */; };
 		F79FF7272F0AC2B300A8B624 /* Arrow in Frameworks */ = {isa = PBXBuildFile; productRef = F79FF7262F0AC2B300A8B624 /* Arrow */; };
+		F79FF72D2F0AC2B300A8B624 /* ArrowMacros in Frameworks */ = {isa = PBXBuildFile; productRef = F79FF72C2F0AC2B300A8B624 /* ArrowMacros */; };
 		F79FF72A2F0AC2CE00A8B624 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = F79FF7292F0AC2CE00A8B624 /* Core */; };
 		F79FF7522F0AFE5F00A8B624 /* dependencies.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = F79FF7512F0AFE4D00A8B624 /* dependencies.generated.swift */; };
 /* End PBXBuildFile section */
@@ -68,6 +69,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F79FF7272F0AC2B300A8B624 /* Arrow in Frameworks */,
+				F79FF72D2F0AC2B300A8B624 /* ArrowMacros in Frameworks */,
 				F79FF7242F0AC29000A8B624 /* Analytics in Frameworks */,
 				F79FF72A2F0AC2CE00A8B624 /* Core in Frameworks */,
 			);
@@ -142,6 +144,7 @@
 			packageProductDependencies = (
 				F79FF7232F0AC29000A8B624 /* Analytics */,
 				F79FF7262F0AC2B300A8B624 /* Arrow */,
+				F79FF72C2F0AC2B300A8B624 /* ArrowMacros */,
 				F79FF7292F0AC2CE00A8B624 /* Core */,
 			);
 			productName = Example;
@@ -445,6 +448,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F79FF7252F0AC2B300A8B624 /* XCLocalSwiftPackageReference ".." */;
 			productName = Arrow;
+		};
+		F79FF72C2F0AC2B300A8B624 /* ArrowMacros */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F79FF7252F0AC2B300A8B624 /* XCLocalSwiftPackageReference ".." */;
+			productName = ArrowMacros;
 		};
 		F79FF7292F0AC2CE00A8B624 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
