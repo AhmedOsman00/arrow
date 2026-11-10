@@ -6,6 +6,12 @@ struct DependencyModule: Hashable, Equatable, CustomStringConvertible {
   let name: String
   let scope: Scope
   let types: Set<Dependency>
+  /// The `#if` clauses the module declaration is nested in
+  var condition: CompilationCondition = .none
+  /// Imports nested in `#if` blocks, keyed by module name, with the condition to emit them under
+  var conditionalImports: [String: String] = [:]
+  /// Whether the module is marked `@MainActor`
+  var isMainActor = false
 
   var description: String {
     """

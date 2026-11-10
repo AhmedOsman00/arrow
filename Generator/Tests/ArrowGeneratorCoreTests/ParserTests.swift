@@ -5,7 +5,7 @@ import XCTest
 @testable import ArrowGeneratorCore
 
 final class ParserTests: XCTestCase {
-  func testParsing_allTypes() {
+  func testParsing_allTypes() throws {
     for type in DependencyModule.ModuleType.allCases {
       // expected
       let expectedModules: Set<DependencyModule> = .fixture(
@@ -29,14 +29,14 @@ final class ParserTests: XCTestCase {
         """)
 
       // when
-      let modules = parse(content)
+      let modules = try parse(content)
 
       // then
       XCTAssertEqual(modules, expectedModules)
     }
   }
 
-  func testParsing_allScopes() {
+  func testParsing_allScopes() throws {
     for scope in DependencyModule.Scope.allCases {
       // expected
       let expectedModules: Set<DependencyModule> = .fixture(
@@ -60,14 +60,14 @@ final class ParserTests: XCTestCase {
         """)
 
       // when
-      let modules = parse(content)
+      let modules = try parse(content)
 
       // then
       XCTAssertEqual(modules, expectedModules)
     }
   }
 
-  func testSkipParsing_noScopeDefined() {
+  func testSkipParsing_noScopeDefined() throws {
     // given
     let content = createContent(
       scope: "",
@@ -78,13 +78,13 @@ final class ParserTests: XCTestCase {
       """)
 
     // when
-    let modules = parse(content)
+    let modules = try parse(content)
 
     // then
     XCTAssertEqual(modules, [])
   }
 
-  func testParsingVariables() {
+  func testParsingVariables() throws {
     // expected
     let expectedModules: Set<DependencyModule> = .fixture(types: [
       .init(
@@ -104,13 +104,13 @@ final class ParserTests: XCTestCase {
       """)
 
     // when
-    let modules = parse(content)
+    let modules = try parse(content)
 
     // then
     XCTAssertEqual(modules, expectedModules)
   }
 
-  func testParsingMethod_withoutParameters() {
+  func testParsingMethod_withoutParameters() throws {
     // expected
     let expectedModules: Set<DependencyModule> = .fixture(types: [
       .init(
@@ -130,13 +130,13 @@ final class ParserTests: XCTestCase {
       """)
 
     // when
-    let modules = parse(content)
+    let modules = try parse(content)
 
     // then
     XCTAssertEqual(modules, expectedModules)
   }
 
-  func testParsingMethod_oneParameterWithoutName_dependecy() {
+  func testParsingMethod_oneParameterWithoutName_dependecy() throws {
     // expected
     let expectedModules: Set<DependencyModule> = .fixture(types: [
       .init(
@@ -156,13 +156,13 @@ final class ParserTests: XCTestCase {
       """)
 
     // when
-    let modules = parse(content)
+    let modules = try parse(content)
 
     // then
     XCTAssertEqual(modules, expectedModules)
   }
 
-  func testParsingMethod_oneParameterWithoutName_namedDependecy() {
+  func testParsingMethod_oneParameterWithoutName_namedDependecy() throws {
     // expected
     let expectedModules: Set<DependencyModule> = .fixture(types: [
       .init(
@@ -184,13 +184,13 @@ final class ParserTests: XCTestCase {
       """)
 
     // when
-    let modules = parse(content)
+    let modules = try parse(content)
 
     // then
     XCTAssertEqual(modules, expectedModules)
   }
 
-  func testParsingMethod_parametersWithoutNames_depedency() {
+  func testParsingMethod_parametersWithoutNames_depedency() throws {
     // expected
     let expectedModules: Set<DependencyModule> = .fixture(types: [
       .init(
@@ -213,13 +213,13 @@ final class ParserTests: XCTestCase {
       """)
 
     // when
-    let modules = parse(content)
+    let modules = try parse(content)
 
     // then
     XCTAssertEqual(modules, expectedModules)
   }
 
-  func testParsingMethod_oneParameters_defaultValue_noDepedency() {
+  func testParsingMethod_oneParameters_defaultValue_noDepedency() throws {
     // expected
     let expectedModules: Set<DependencyModule> = .fixture(types: [
       .init(
@@ -239,13 +239,13 @@ final class ParserTests: XCTestCase {
       """)
 
     // when
-    let modules = parse(content)
+    let modules = try parse(content)
 
     // then
     XCTAssertEqual(modules, expectedModules)
   }
 
-  func testParsingMethod_oneParameter_oneDependency() {
+  func testParsingMethod_oneParameter_oneDependency() throws {
     // expected
     let expectedModules: Set<DependencyModule> = .fixture(types: [
       .init(
@@ -265,13 +265,13 @@ final class ParserTests: XCTestCase {
       """)
 
     // when
-    let modules = parse(content)
+    let modules = try parse(content)
 
     // then
     XCTAssertEqual(modules, expectedModules)
   }
 
-  func testParsingMethod_oneParameter_namedDependency() {
+  func testParsingMethod_oneParameter_namedDependency() throws {
     // expected
     let expectedModules: Set<DependencyModule> = .fixture(types: [
       .init(
@@ -292,13 +292,13 @@ final class ParserTests: XCTestCase {
       """)
 
     // when
-    let modules = parse(content)
+    let modules = try parse(content)
 
     // then
     XCTAssertEqual(modules, expectedModules)
   }
 
-  func testParsingVariable_namedDependency() {
+  func testParsingVariable_namedDependency() throws {
     // expected
     let expectedModules: Set<DependencyModule> = .fixture(types: [
       .init(
@@ -319,13 +319,13 @@ final class ParserTests: XCTestCase {
       """)
 
     // when
-    let modules = parse(content)
+    let modules = try parse(content)
 
     // then
     XCTAssertEqual(modules, expectedModules)
   }
 
-  func testParsingMethod_oneParameter_namedDependency_withEnum() {
+  func testParsingMethod_oneParameter_namedDependency_withEnum() throws {
     // expected
     let expectedModules: Set<DependencyModule> = .fixture(types: [
       .init(
@@ -349,13 +349,13 @@ final class ParserTests: XCTestCase {
       """)
 
     // when
-    let modules = parse(content)
+    let modules = try parse(content)
 
     // then
     XCTAssertEqual(modules, expectedModules)
   }
 
-  func testParsingMethod_returnsTuple_dependency() {
+  func testParsingMethod_returnsTuple_dependency() throws {
     // expected
     let expectedModules: Set<DependencyModule> = .fixture(types: [
       .init(
@@ -375,13 +375,13 @@ final class ParserTests: XCTestCase {
       """)
 
     // when
-    let modules = parse(content)
+    let modules = try parse(content)
 
     // then
     XCTAssertEqual(modules, expectedModules)
   }
 
-  func testSkipParsingVoidMethod() {
+  func testSkipParsingVoidMethod() throws {
     // expected
     let expectedModules: Set<DependencyModule> = .fixture(types: [])
 
@@ -395,13 +395,13 @@ final class ParserTests: XCTestCase {
       """)
 
     // when
-    let modules = parse(content)
+    let modules = try parse(content)
 
     // then
     XCTAssertEqual(modules, expectedModules)
   }
 
-  func testSkipParsingStoredVariables() {
+  func testSkipParsingStoredVariables() throws {
     // expected
     let expectedModules: Set<DependencyModule> = .fixture(types: [])
 
@@ -414,13 +414,45 @@ final class ParserTests: XCTestCase {
       """)
 
     // when
-    let modules = parse(content)
+    let modules = try parse(content)
 
     // then
     XCTAssertEqual(modules, expectedModules)
   }
 
-  func testSkipParsing_privateAndStaticMembers() {
+  func testUnsupportedProviders_areRejected() {
+    // given
+    let content = createContent(
+      """
+          func provideAsync() async -> Service { Service() }
+          func provideThrowing() throws -> Service { Service() }
+          func provideBoth() async throws -> Service { Service() }
+          func provideGeneric<T>() -> T { fatalError() }
+          var effectful: Service { get async { Service() } }
+          let stored: Service
+          private func helper() throws -> Int { 0 }
+      """)
+
+    // when, then
+    XCTAssertThrowsError(try parse(content)) { error in
+      guard case ParserError.unsupportedProviders(let diagnostics) = error else {
+        return XCTFail("Unexpected error: \(error)")
+      }
+      XCTAssertEqual(
+        diagnostics,
+        [
+          "Module.swift:5:9: error: `Module.provideAsync` is `async`, but the registry can't await it.",
+          "Module.swift:6:5: error: `Module.provideThrowing` throws, but the registry can't handle errors.",
+          "Module.swift:7:5: error: `Module.provideBoth` is `async throws`, but the registry can't await or handle errors.",
+          "Module.swift:8:5: error: `Module.provideGeneric` is generic, so the registry can't infer its type arguments.",
+          "Module.swift:9:5: error: `Module.effectful` is `async`, but the registry can't await it.",
+          "Module.swift:10:5: error: `Module.stored` is a stored property without an initializer, "
+            + "so the module can't be created with `init()`. Make it a computed property.",
+        ])
+    }
+  }
+
+  func testSkipParsing_privateAndStaticMembers() throws {
     // expected
     let expectedModules: Set<DependencyModule> = .fixture(types: [
       .init(dependencyType: .method, name: nil, type: "Service", block: "provideService", parameters: [])
@@ -436,13 +468,35 @@ final class ParserTests: XCTestCase {
       """)
 
     // when
-    let modules = parse(content)
+    let modules = try parse(content)
 
     // then
     XCTAssertEqual(modules, expectedModules)
   }
 
-  func testSkipParsing_nestedTypesAndLocalFunctions() {
+  func testParsing_privateSetVariable() throws {
+    // expected
+    let expectedModules: Set<DependencyModule> = .fixture(types: [
+      .init(dependencyType: .variable, name: nil, type: "Cache", block: "cache", parameters: [])
+    ])
+
+    // given
+    let content = createContent(
+      """
+          public private(set) var cache: Cache {
+              get { Cache() }
+              set {}
+          }
+      """)
+
+    // when
+    let modules = try parse(content)
+
+    // then
+    XCTAssertEqual(modules, expectedModules)
+  }
+
+  func testSkipParsing_nestedTypesAndLocalFunctions() throws {
     // expected
     let expectedModules: Set<DependencyModule> = .fixture(types: [
       .init(dependencyType: .method, name: nil, type: "Service", block: "provideService", parameters: [])
@@ -462,13 +516,13 @@ final class ParserTests: XCTestCase {
       """)
 
     // when
-    let modules = parse(content)
+    let modules = try parse(content)
 
     // then
     XCTAssertEqual(modules, expectedModules)
   }
 
-  func testParsing_ifConfigMembers() {
+  func testParsing_ifConfigMembers() throws {
     // expected
     let expectedModules: Set<DependencyModule> = .fixture(types: [
       .init(dependencyType: .method, name: nil, type: "Logger", block: "provideLogger", parameters: [])
@@ -483,13 +537,130 @@ final class ParserTests: XCTestCase {
       """)
 
     // when
-    let modules = parse(content)
+    let modules = try parse(content)
 
     // then
-    XCTAssertEqual(modules, expectedModules)
+    XCTAssertEqual(modules.map(\.name), expectedModules.map(\.name))
+    XCTAssertEqual(modules.first?.types.map(\.id), expectedModules.first?.types.map(\.id))
+    XCTAssertEqual(modules.first?.types.first?.condition.expression, "DEBUG")
   }
 
-  func testParsing_qualifiedScope() {
+  func testParsing_ifConfigBranches_keepTheirConditions() throws {
+    // given
+    let content = createContent(
+      """
+          #if DEBUG
+          func provideLogger() -> Logger { ConsoleLogger() }
+          #elseif os(iOS) && BETA
+          func provideBetaLogger() -> Logger { BetaLogger() }
+          #else
+          func provideReleaseLogger() -> Logger { NoopLogger() }
+          #endif
+      """)
+
+    // when
+    let types = try parse(content).first?.types ?? []
+    let conditions = Dictionary(uniqueKeysWithValues: types.map { ($0.block, $0.condition.expression) })
+
+    // then
+    XCTAssertEqual(
+      conditions,
+      [
+        "provideLogger": "DEBUG",
+        "provideBetaLogger": "!DEBUG && (os(iOS) && BETA)",
+        "provideReleaseLogger": "!DEBUG && !(os(iOS) && BETA)",
+      ])
+  }
+
+  func testParsing_declarationImports_importTheirModule() throws {
+    // given
+    let content = """
+      import struct Networking.Request
+      import func Logging.log
+      import Foundation.NSString
+
+      struct Module: TransientScope {}
+      """
+
+    // when
+    let imports = try parse(content).first?.imports
+
+    // then
+    XCTAssertEqual(imports, ["Networking", "Logging", "Foundation.NSString"])
+  }
+
+  func testParsing_conditionalImport() throws {
+    // given
+    let content = """
+      import Arrow
+      #if canImport(UIKit)
+      import UIKit
+      #endif
+
+      final class Module: TransientScope {
+          func provideService() -> Service { Service() }
+      }
+      """
+
+    // when
+    let module = try parse(content).first
+
+    // then
+    XCTAssertEqual(module?.imports, ["Arrow"])
+    XCTAssertEqual(module?.conditionalImports, ["UIKit": "canImport(UIKit)"])
+  }
+
+  func testParsing_importsAfterModule() throws {
+    // given
+    let content = """
+      final class Module: TransientScope {
+          func provideService() -> Service { Service() }
+      }
+
+      import Networking
+      """
+
+    // then
+    XCTAssertEqual(try parse(content).first?.imports, ["Networking"])
+  }
+
+  func testParsing_nestedModules_useQualifiedNames() throws {
+    // given
+    let content = """
+      import Arrow
+
+      struct Outer {
+          class Inner: TransientScope {
+              var service: Service { Service() }
+          }
+      }
+
+      extension Feature {
+          enum Namespace {
+              struct Module: SingletonScope {
+                  var logger: Logger { Logger() }
+              }
+          }
+      }
+
+      struct Factory {
+          func make() -> Service {
+              struct Local: TransientScope {
+                  var cache: Cache { Cache() }
+              }
+              return Service()
+          }
+      }
+      """
+
+    // when
+    let names = try parse(content).map(\.name).sorted()
+
+    // then
+    XCTAssertEqual(names, ["Feature.Namespace.Module", "Outer.Inner"])
+  }
+
+  func testParsing_qualifiedScope() throws {
     // expected
     let expectedModules: Set<DependencyModule> = .fixture(
       scope: .singleton,
@@ -505,13 +676,13 @@ final class ParserTests: XCTestCase {
       """)
 
     // when
-    let modules = parse(content)
+    let modules = try parse(content)
 
     // then
     XCTAssertEqual(modules, expectedModules)
   }
 
-  func testParsing_nameAttributeMatchesExactly() {
+  func testParsing_nameAttributeMatchesExactly() throws {
     // expected
     let expectedModules: Set<DependencyModule> = .fixture(types: [
       .init(dependencyType: .method, name: "Primary", type: "Service", block: "providePrimary", parameters: []),
@@ -533,7 +704,42 @@ final class ParserTests: XCTestCase {
       """)
 
     // when
-    let modules = parse(content)
+    let modules = try parse(content)
+
+    // then
+    XCTAssertEqual(modules, expectedModules)
+  }
+
+  func testParsing_nameDocCommentMarker() throws {
+    // expected
+    let expectedModules: Set<DependencyModule> = .fixture(types: [
+      .init(dependencyType: .method, name: "Primary", type: "Service", block: "providePrimary", parameters: []),
+      .init(dependencyType: .variable, name: "Secondary", type: "Service", block: "secondary", parameters: []),
+      .init(dependencyType: .method, name: "Macro", type: "Service", block: "provideMacro", parameters: []),
+      .init(dependencyType: .method, name: nil, type: "Service", block: "provideOther", parameters: []),
+    ])
+
+    // given
+    let content = createContent(
+      """
+          /// The primary service.
+          /// @Name("Primary")
+          func providePrimary() -> Service { Service() }
+
+          /// @Name("Secondary")
+          var secondary: Service { Service() }
+
+          /// @Name("Ignored")
+          @Name("Macro")
+          func provideMacro() -> Service { Service() }
+
+          // @Name("Ignored")
+          /// Mentions @Name("Ignored") mid-sentence.
+          func provideOther() -> Service { Service() }
+      """)
+
+    // when
+    let modules = try parse(content)
 
     // then
     XCTAssertEqual(modules, expectedModules)
@@ -541,10 +747,10 @@ final class ParserTests: XCTestCase {
 }
 
 private extension ParserTests {
-  func parse(_ content: String) -> Set<DependencyModule> {
+  func parse(_ content: String) throws -> Set<DependencyModule> {
     let tree = Parser.parse(source: content)
     let syntaxVisitor = DependencyModulesParser(viewMode: .all)
-    return syntaxVisitor.parse(tree)
+    return try syntaxVisitor.parse(tree, fileName: "Module.swift")
   }
 
   func createContent(

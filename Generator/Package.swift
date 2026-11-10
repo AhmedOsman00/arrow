@@ -18,7 +18,7 @@ let package = Package(
   ],
   dependencies: [
     .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.7.0"),
-    .package(url: "https://github.com/swiftlang/swift-syntax.git", exact: "602.0.0"),
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", exact: "603.0.1"),
     .package(url: "https://github.com/kylef/PathKit.git", exact: "1.0.1"),
   ],
   targets: [
@@ -33,6 +33,8 @@ let package = Package(
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftParser", package: "swift-syntax"),
+        .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
+        .product(name: "SwiftBasicFormat", package: "swift-syntax"),
         "Constants",
       ]),
     .testTarget(

@@ -187,11 +187,13 @@ Transforms parsed data into UI models suitable for code generation.
 
 **Responsibilities**:
 - Map `DependencyModule` → `DependencyUiModel`
-- Sort dependencies by topological order, skipping ones provided by external registries (`--external-path`)
+- Sort dependencies by topological order, skipping ones provided by external registries (`--external-path` and nested Swift packages)
+- Resolve an optional parameter with `tryResolve` when nothing provides the optional type itself
+- Mark the registry `@MainActor` when a module or provider is
 - Collect all required imports
 
 #### DependencyFile
-Generates Swift source code using SwiftSyntax builders.
+Generates Swift source code with SwiftSyntaxBuilder: each piece is written as Swift source through string interpolation and parsed into syntax nodes, then `BasicFormat` (2-space indentation) lays out the file.
 
 **Generates**:
 - Import declarations
@@ -265,15 +267,14 @@ This ID format enables:
 
 ### 1. Why SwiftSyntax for Code Generation?
 
-**Decision**: Use SwiftSyntax builders instead of string templates
+**Decision**: Use SwiftSyntaxBuilder string interpolation plus `BasicFormat` instead of plain string templates or hand-built nodes
 
 **Rationale**:
-- **Type safety**: Compile-time guarantees for valid Swift syntax
-- **Maintainability**: Easier to update when Swift syntax changes
-- **Correctness**: Automatic handling of trivia (whitespace, newlines)
+- **Readability**: Each piece reads like the code it generates
+- **Correctness**: Every piece is parsed, and `BasicFormat` handles indentation, so there's no hand-placed trivia
 - **Extensibility**: Easy to add new code generation patterns
 
-**Trade-off**: More verbose code, steeper learning curve
+**Trade-off**: Malformed source text only shows up as a broken syntax tree when generating, so the output is covered by exact-match tests
 
 ### 2. Why Topological Sorting?
 
@@ -352,8 +353,8 @@ To recognize new dependency declaration patterns:
 
 To customize generated code structure:
 
-1. Modify `DependencyFile` SwiftSyntax builders
-2. Update trivia for formatting preferences
+1. Modify the source snippets in `DependencyFile`
+2. Change the `BasicFormat` configuration for formatting preferences
 3. Consider UI model changes in `DependencyFilePresenter`
 
 ### Integration with Other Tools
@@ -370,6 +371,8 @@ The tool can be integrated into:
 - **Lazy evaluation**: UI models computed lazily
 - **Set operations**: Fast lookups for validation
 - **Single pass**: Each file parsed once
+- **Pre-filter**: Files whose text doesn't contain `Scope` can't declare a module, so they're skipped unparsed
+- **Parallel parsing**: Files are parsed with `DispatchQueue.concurrentPerform`, then handled in sorted order so the output is stable
 
 ### Memory Usage
 - **Syntax trees**: Released after parsing each file
@@ -377,9 +380,8 @@ The tool can be integrated into:
 - **Generated code**: Built incrementally via SwiftSyntax
 
 ### Optimization Opportunities
-1. **Parallel parsing**: Parse multiple files concurrently
-2. **Incremental generation**: Only reparse changed files
-3. **Caching**: Cache parsed modules between runs
+1. **Incremental generation**: Only reparse changed files
+2. **Caching**: Cache parsed modules between runs
 
 ## Testing Strategy
 

@@ -19,7 +19,7 @@ This eliminates the tedious and error-prone task of manually writing dependency 
 - **Named Dependencies**: Supports `@Name("...")` and `@Named("...")` attributes for multiple instances of the same type
 - **Default Parameters**: Handles methods with default parameter values
 - **Dual Mode**: Works with both Xcode projects and Swift Packages
-- **Xcode Integration**: Runs from a Run Script build phase using Xcode's environment
+- **Xcode Integration**: Runs from a Run Script build phase, configured through build settings
 
 ## Prerequisites
 
@@ -33,14 +33,13 @@ This eliminates the tedious and error-prone task of manually writing dependency 
 ### Homebrew (Recommended)
 
 ```bash
-brew tap AhmedOsman00/homebrew-tap
-brew install AhmedOsman00/tap/arrow
+brew install --cask AhmedOsman00/tap/arrow
 ```
 
 To upgrade to the latest version:
 
 ```bash
-brew upgrade arrow
+brew upgrade --cask arrow
 ```
 
 ### From Source
@@ -93,20 +92,57 @@ arrow generate \
 
 By default the file is written to `<proj-root>/dependencies.generated.swift`. Use `--ext-path` to point somewhere else. Without `--registry-name`, the registry is named after `PRODUCT_MODULE_NAME` (or `TARGET_NAME`), for example `MyAppDependencies`, falling back to `AppDependencies`.
 
-**Xcode Build Phase Integration**
+### Running From Xcode
 
-Inside a Run Script phase or a scheme pre-action with build settings, `--proj-root` falls back to Xcode's `PROJECT_DIR`, so no arguments are needed:
+The recommended setup runs the generator from a Run Script build phase, so the registry is regenerated on every build. Xcode passes its build settings to the script as environment variables, so the script needs no arguments:
 
-1. Add a new "Run Script Phase" in your target's Build Phases
-2. Add the script:
-   ```bash
-   if which arrow >/dev/null; then
-     arrow generate
-   else
-     echo "warning: Arrow Generator not installed"
-   fi
-   ```
-3. Move the phase before "Compile Sources"
+- `--proj-root` falls back to `PROJECT_DIR`
+- the registry is named after `PRODUCT_MODULE_NAME` (or `TARGET_NAME`)
+- every other option can be set as an `ARROW_*` build setting (see [Build Settings](#build-settings))
+
+**1. Create the output file once.** Create an empty `dependencies.generated.swift` in the project root (or wherever `ARROW_EXT_PATH` points) and add it to your target.
+
+**2. Disable user script sandboxing for the target.** In the target's Build Settings, set **User Script Sandboxing** (`ENABLE_USER_SCRIPT_SANDBOXING`) to **No**. Xcode 15 and later turns it on by default, and with it on the script can only read files declared as its inputs. The generator reads every Swift file in the project, so the build fails with `Sandbox: deny file-read-data` errors.
+
+**3. Add a Run Script phase** in the target's Build Phases:
+
+```bash
+# Xcode doesn't put Homebrew on the PATH of build scripts (Apple Silicon installs to /opt/homebrew).
+export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin"
+
+if command -v arrow >/dev/null; then
+  arrow generate
+else
+  echo "error: Arrow Generator is not installed. Run: brew install --cask AhmedOsman00/tap/arrow"
+  exit 1
+fi
+```
+
+**4. Configure the phase:**
+- Drag it above **Compile Sources** so the registry is up to date before the code that uses it compiles.
+- Uncheck **Based on dependency analysis**. The phase then runs on every build, which is cheap: the file is rewritten only when its content changes, so an unchanged registry doesn't trigger a recompile.
+
+The script fails the build when the generator is missing. A build that silently continues would compile an outdated registry and crash at runtime on a missing dependency.
+
+#### Build Settings
+
+Each option has a build setting fallback, so the script stays `arrow generate` and every target or configuration (or `.xcconfig` file) sets its own values. Command-line options take precedence.
+
+| Build setting | Option | Example |
+| --- | --- | --- |
+| `ARROW_REGISTRY_NAME` | `--registry-name` | `AppDependencies` |
+| `ARROW_EXT_PATH` | `--ext-path` | `$(SRCROOT)/App/Generated/dependencies.generated.swift` |
+| `ARROW_PACKAGE_PATHS` | `--package-path` | `$(SRCROOT)/Packages/Core/Sources/Core` |
+| `ARROW_EXTERNAL_PATHS` | `--external-path` | `$(SRCROOT)/../Shared/Analytics/Sources/Analytics` |
+
+Add them as user-defined build settings (Build Settings → **+** → **Add User-Defined Setting**) or in an `.xcconfig`:
+
+```
+// App.xcconfig
+ARROW_EXTERNAL_PATHS = $(SRCROOT)/../Shared/Analytics/Sources/Analytics $(SRCROOT)/../Shared/Network/Sources/Network
+```
+
+The two path settings take several paths separated by spaces. Quote a path that contains spaces: `"$(SRCROOT)/My Packages/Analytics"`.
 
 ### Swift Package Mode
 
@@ -122,12 +158,14 @@ To regenerate easily, add the command to a `Makefile` target or a script in your
 
 ### Dependencies From Other Registries
 
-When a module uses a dependency that another registry provides (for example an app module that needs `Analytics` from `AnalyticsDependencies`), pass that registry's sources with `--external-path`. They are used to validate and order the graph, but nothing from them is generated. This also works when the package lives inside the app's project root:
+When a module uses a dependency that another registry provides (for example an app module that needs `Analytics` from `AnalyticsDependencies`), pass that registry's sources with `--external-path`. They are used to validate and order the graph, but nothing from them is generated.
+
+Swift packages nested inside a scanned path (any folder below it with a `Package.swift`) are treated this way automatically, so a local package with its own registry doesn't need `--external-path`. Point `--package-path` inside a nested package to generate its providers into this registry instead. For a package outside the project root, pass its sources explicitly:
 
 ```bash
 arrow generate \
   --proj-root . \
-  --external-path Packages/Analytics/Sources/Analytics
+  --external-path ../Shared/Sources/Analytics
 ```
 
 At startup, register registries before the ones that depend on them, because eager singletons are created during registration:
@@ -160,9 +198,12 @@ final class AppModule: SingletonScope {
 
 ### Named Dependencies
 
-Use `@Name("...")` to declare named dependencies and `@Named("...")` to inject them:
+Use `@Name("...")` to declare named dependencies and `@Named("...")` to inject them. `@Name` is a macro in the opt-in `ArrowMacros` product, so add that product to the target and import it, or write it as a doc-comment marker instead (see below):
 
 ```swift
+import Arrow
+import ArrowMacros
+
 final class ConfigModule: SingletonScope {
     @Name("Production")
     var prodAPI: APIClient {
@@ -183,6 +224,20 @@ final class ServiceModule: SingletonScope {
 }
 ```
 
+The doc-comment marker names a provider the same way without the macro, so the module doesn't need `ArrowMacros` or swift-syntax. Put `@Name("...")` on its own `///` line; the `@Name` macro wins when both are present:
+
+```swift
+import Arrow
+
+final class ConfigModule: SingletonScope {
+    /// The production API.
+    /// @Name("Production")
+    var prodAPI: APIClient {
+        APIClient(baseURL: "https://api.production.com")
+    }
+}
+```
+
 ### Default Parameters
 
 Methods can have default parameter values for non-injected dependencies:
@@ -198,6 +253,36 @@ final class ViewModelModule: TransientScope {
 }
 ```
 
+### Optional Parameters
+
+An optional parameter is resolved with `tryResolve`, so it's `nil` when nothing provides the wrapped type, and it's never reported as missing. A provider that returns the optional type itself (`Cache?`) still takes precedence:
+
+```swift
+final class FeedModule: TransientScope {
+    // resolver.tryResolve(Cache.self)
+    func feed(cache: Cache?) -> Feed { Feed(cache: cache) }
+}
+```
+
+### Main Actor Modules
+
+Generated factories are synchronous, so in Swift 6 they can't call a `@MainActor` provider from a nonisolated registry. When a module or provider is marked `@MainActor`, the whole registry is generated as `@MainActor enum AppDependencies: @preconcurrency DependencyRegistry`, so register it from the main actor (for example in `App.init`) and resolve its main-actor dependencies there. The module's `init()` satisfies a nonisolated protocol requirement, so mark it `nonisolated`:
+
+```swift
+@MainActor
+final class ScreenModule: TransientScope {
+    nonisolated init() {}
+
+    func viewModel(repository: UserRepository) -> HomeViewModel {
+        HomeViewModel(repository: repository)
+    }
+}
+```
+
+Each `@MainActor` provider's factory also starts with `precondition(Thread.isMainThread, ...)`. The container runs factories on whichever thread resolves, so without the check a background `resolve` would silently build a main-actor object off the main thread. Other providers in the registry can still be resolved from any thread.
+
+The generator only sees `@MainActor` written on the module or its providers. A module isolated another way (for example by `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`) is already handled by that setting.
+
 ### Scopes
 
 - **SingletonScope**: Dependencies are created once, during registration, and reused
@@ -209,8 +294,9 @@ final class ViewModelModule: TransientScope {
 1. Only computed properties (not stored properties) are considered
 2. Only methods with return types are scanned (void methods are ignored)
 3. All parameters without default values are treated as dependencies
-4. Use `@Name("...")` on declarations to create named dependencies
+4. Use `@Name("...")` on declarations, or a `/// @Name("...")` doc-comment line, to create named dependencies
 5. Use `@Named("...")` on method parameters to inject named dependencies
+6. A singleton or lazy singleton that depends on a transient dependency keeps a single instance of it forever, so the generator prints a `warning:` for it
 
 ## Generated Output
 
@@ -286,13 +372,17 @@ OPTIONS:
   --is-package                   Enable Swift Package mode instead of Xcode project mode
   --proj-root <path>             Root path of the project (falls back to PROJECT_DIR)
   --ext-path <path>              Path to an existing dependencies.generated.swift
-                                 (defaults to <proj-root>/dependencies.generated.swift)
+                                 (falls back to ARROW_EXT_PATH, then
+                                 <proj-root>/dependencies.generated.swift)
   --package-path <path>          Path to a Swift Package sources directory
-                                 (can be specified multiple times)
+                                 (can be specified multiple times; falls back to
+                                 ARROW_PACKAGE_PATHS)
   --external-path <path>         Sources of dependencies provided by another registry;
-                                 used for validation only (can be specified multiple times)
+                                 used for validation only (can be specified multiple
+                                 times; falls back to ARROW_EXTERNAL_PATHS)
   --registry-name <name>         Name of the generated registry type
-                                 (defaults to <name>Dependencies)
+                                 (falls back to ARROW_REGISTRY_NAME, then
+                                 <name>Dependencies)
   --version                      Show the version
   --help                         Show help information
 ```
