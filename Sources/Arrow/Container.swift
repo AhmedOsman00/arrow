@@ -2,7 +2,8 @@ import Foundation
 
 /// Thread-safe dependency injection container for managing application dependencies.
 ///
-/// `Container` is a singleton service locator that manages dependency registration and resolution.
+/// `Container` is a service locator that manages dependency registration and resolution. Apps
+/// usually use `Container.shared`; tests can create their own container so they don't share state.
 /// It supports three lifecycle scopes (singleton, lazy singleton and transient) and provides type-safe
 /// dependency injection.
 ///
@@ -24,6 +25,10 @@ import Foundation
 ///
 /// // Resolve a dependency
 /// let service: MyService = Container.shared.resolve(MyService.self)
+///
+/// // An isolated container, for example one per test
+/// let container = Container()
+/// container.register(AppDependencies.self)
 /// ```
 ///
 public final class Container: Registerable, @unchecked Sendable {
@@ -36,7 +41,8 @@ public final class Container: Registerable, @unchecked Sendable {
   /// Guards `dependencies`. Never held while running a factory.
   private let lock = NSLock()
 
-  private init() {}
+  /// Creates an empty container, independent of `shared`.
+  public init() {}
 
   /// Registers a dependency in the container with the specified scope.
   ///
@@ -82,7 +88,7 @@ public final class Container: Registerable, @unchecked Sendable {
     case .singleton:
       entry = .instance(factory(self))
     case .lazySingleton:
-      entry = .lazy(LazyInstance { factory(self) })
+      entry = .lazy(LazyInstance(description: "\(key.name) of type '\(type)'") { factory(self) })
     case .transient:
       entry = .factory { factory(self) }
     }
@@ -254,12 +260,17 @@ private extension Container {
   /// Creates its value on first access, exactly once, even under concurrent access.
   ///
   /// Uses its own lock rather than the container's, so the factory can resolve other dependencies.
+  /// The lock is recursive so a factory that resolves its own dependency, directly or through
+  /// others, re-enters it and crashes with a message instead of deadlocking.
   final class LazyInstance: @unchecked Sendable {
-    private let lock = NSLock()
+    private let lock = NSRecursiveLock()
+    private let description: String
     private let factory: () -> Any
     private var instance: Any?
+    private var isCreating = false
 
-    init(_ factory: @escaping () -> Any) {
+    init(description: String, _ factory: @escaping () -> Any) {
+      self.description = description
       self.factory = factory
     }
 
@@ -270,6 +281,13 @@ private extension Container {
       if let instance {
         return instance
       }
+      // Other threads wait on the lock, so only the creating thread can get here mid-creation.
+      guard !isCreating else {
+        fatalError("Circular dependency: lazy singleton \(description) was resolved while it was being created.")
+      }
+      isCreating = true
+      defer { isCreating = false }
+
       let created = factory()
       instance = created
       return created

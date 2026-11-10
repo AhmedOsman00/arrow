@@ -14,15 +14,18 @@ let package = Package(
     .macCatalyst(.v13),
   ],
   products: [
-    .library(name: "Arrow", targets: ["Arrow"])
+    .library(name: "Arrow", targets: ["Arrow"]),
+    // Opt-in: `@Name` is a macro, so this product builds swift-syntax. Arrow itself doesn't.
+    .library(name: "ArrowMacros", targets: ["ArrowMacros"]),
   ],
   dependencies: [
     .package(url: "https://github.com/swiftlang/swift-syntax.git", "600.0.0"..<"700.0.0"),
     .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.4.5"),
   ],
   targets: [
+    .target(name: "Arrow"),
     .target(
-      name: "Arrow",
+      name: "ArrowMacros",
       dependencies: [
         "Macros"
       ]),
