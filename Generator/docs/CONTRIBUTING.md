@@ -28,13 +28,9 @@ Before you begin:
 - macOS 10.15 or later
 - Swift 6.2 or later
 - Xcode (optional, but recommended for development)
-- SwiftLint (for code style enforcement)
 
-### Installing SwiftLint
-
-```bash
-brew install swiftlint
-```
+SwiftLint doesn't need installing: `make lint` and the pre-commit hook run the pinned version through
+`scripts/swiftlint.sh`, which downloads its prebuilt binary on first use.
 
 ### Clone and Build
 

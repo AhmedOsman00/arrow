@@ -31,27 +31,9 @@ help:
 bootstrap:
 	@echo "🚀 Starting Arrow development environment setup..."
 	@echo ""
-	@# Check for Homebrew
-	@if ! which brew > /dev/null 2>&1; then \
-		echo "❌ Homebrew not found."; \
-		echo ""; \
-		echo "Install Homebrew first:"; \
-		echo "  /bin/bash -c \"\$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""; \
-		echo ""; \
-		echo "Then run 'make bootstrap' again."; \
-		exit 1; \
-	fi
-	@echo "✅ Homebrew is installed"
-	@echo ""
-	@# Install Homebrew dependencies
-	@echo "📦 Installing Homebrew dependencies (Brewfile)..."
-	@brew bundle || { echo "❌ Failed to install Homebrew dependencies"; exit 1; }
-	@echo "✅ Homebrew dependencies installed"
-	@echo ""
-	@# Install Mint dependencies
-	@echo "📦 Installing Swift tool dependencies (Mintfile)..."
-	@mint bootstrap || { echo "❌ Failed to install Mint dependencies"; exit 1; }
-	@echo "✅ Mint dependencies installed"
+	@# Download the pinned SwiftLint
+	@./scripts/swiftlint.sh version > /dev/null || { echo "❌ Failed to download SwiftLint"; exit 1; }
+	@echo "✅ SwiftLint $$(./scripts/swiftlint.sh version) ready"
 	@echo ""
 	@# Install git hooks
 	@$(MAKE) install-hooks
@@ -113,11 +95,10 @@ compatibility:
 lint: lint-library
 	@$(MAKE) -C Generator lint
 
-# Lint Arrow's Swift files using SwiftLint (via Mint)
+# Lint Arrow's Swift files using the pinned SwiftLint
 lint-library:
-	@which mint > /dev/null || { echo "⚠️  Mint not installed. Run: brew install mint"; exit 1; }
 	@echo "🔍 Running SwiftLint..."
-	@mint run swiftlint swiftlint --strict --reporter github-actions-logging
+	@./scripts/swiftlint.sh --strict --reporter github-actions-logging
 	@echo "✅ Linting complete."
 
 # Generate documentation

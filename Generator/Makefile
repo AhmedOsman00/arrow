@@ -45,11 +45,10 @@ test:
 	@swift test --enable-code-coverage
 	@echo "✅ Tests passed."
 
-# Lint Swift files using SwiftLint (via Mint)
+# Lint Swift files using the pinned SwiftLint at the repo root
 lint:
-	@which mint > /dev/null || { echo "⚠️  Mint not installed. Run: brew install mint"; exit 1; }
 	@echo "🔍 Running SwiftLint..."
-	@mint run --mintfile ../Mintfile swiftlint swiftlint --strict --reporter github-actions-logging
+	@../scripts/swiftlint.sh --strict --reporter github-actions-logging
 	@echo "✅ Linting complete."
 
 # Clean build artifacts

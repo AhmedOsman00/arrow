@@ -60,11 +60,9 @@ make build-generator
 ```
 
 **What `make bootstrap` does:**
-1. Checks for Homebrew (provides installation instructions if missing)
-2. Installs Mint and other tools from `Brewfile`
-3. Installs SwiftLint and other Swift tools from `Mintfile`
-4. Installs git hooks for automated linting
-5. Verifies your development environment
+1. Downloads the pinned prebuilt SwiftLint into `.tools/` (see `scripts/swiftlint.sh`)
+2. Installs git hooks for automated linting
+3. Verifies your development environment
 
 ### Add to PATH (Optional)
 

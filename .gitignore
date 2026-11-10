@@ -27,3 +27,6 @@ Thumbs.db
 /docs/
 Example/dependencies.generated.swift
 Compatibility/Sources/Compatibility/dependencies.generated.swift
+
+# Tools downloaded by scripts/
+/.tools/
