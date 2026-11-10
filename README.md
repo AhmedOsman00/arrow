@@ -20,7 +20,7 @@ Add Arrow to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/AhmedOsman00/Arrow.git", from: "1.1.0")
+    .package(url: "https://github.com/AhmedOsman00/Arrow.git", from: "2.1.0")
 ]
 ```
 
@@ -28,7 +28,7 @@ Or in Xcode: **File > Add Package Dependencies** → `https://github.com/AhmedOs
 
 ## Quick Start
 
-Arrow uses **modules** to organize dependencies. The [Arrow Generator](https://github.com/AhmedOsman00/arrow-generator) automatically creates all registration code for you.
+Arrow uses **modules** to organize dependencies. The [Arrow Generator](Generator/README.md) automatically creates all registration code for you.
 
 ### 1. Define a Module
 
@@ -54,7 +54,7 @@ final class AppModule: SingletonScope {
 
 ### 2. Generate Registration Code
 
-Install the [Arrow Generator](https://github.com/AhmedOsman00/arrow-generator):
+Install the [Arrow Generator](Generator/README.md). It's released together with Arrow, so use the same version of both:
 
 ```bash
 brew install --cask AhmedOsman00/tap/arrow
@@ -77,7 +77,7 @@ brew install --cask AhmedOsman00/tap/arrow
    fi
    ```
 
-The script needs no arguments: it reads Xcode's build settings. Configure it per target with `ARROW_*` build settings, for example `ARROW_EXTERNAL_PATHS` for dependencies provided by another registry. See [Running From Xcode](https://github.com/AhmedOsman00/arrow-generator#running-from-xcode) for every setting.
+The script needs no arguments: it reads Xcode's build settings. Configure it per target with `ARROW_*` build settings, for example `ARROW_EXTERNAL_PATHS` for dependencies provided by another registry. See [Running From Xcode](Generator/README.md#running-from-xcode) for every setting.
 
 **Swift packages** run it from the command line, or a `Makefile` target:
 
@@ -238,11 +238,17 @@ See the [Example](./Example) directory for a complete iOS app demonstrating:
 - **Swift**: 6.0+
 - **Xcode**: 16.0+
 - **Platforms**: iOS 13+, macOS 10.15+, tvOS 13+, watchOS 6+, macCatalyst 13+
-- **Code Generator**: [Arrow Generator](https://github.com/AhmedOsman00/arrow-generator) CLI
+- **Code Generator**: [Arrow Generator](Generator/README.md) CLI, at the same version as Arrow
 
-## Related Projects
+## Repository Layout
 
-- [Arrow Generator](https://github.com/AhmedOsman00/arrow-generator) - Code generation CLI tool
+This repository holds both halves of Arrow, released together under one version:
+
+- The **Arrow library** at the root, which is what Swift Package Manager builds
+- The **[Arrow Generator](Generator/README.md)** in `Generator/`, released as a binary through Homebrew
+- **`Compatibility/`**, which CI uses to build the generator's output against the library on every PR
+
+Run `make bootstrap` once, then `make test` and `make lint` to check both packages.
 
 ## Contributing
 
