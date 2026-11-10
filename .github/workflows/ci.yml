@@ -18,14 +18,12 @@ jobs:
             lint: lint-library
             test: test-library
             tests: ArrowPackageTests
-            flag: arrow
           - name: Generator
             package: Generator
             make: make -C Generator
             lint: lint
             test: test
             tests: ArrowGeneratorPackageTests
-            flag: generator
 
     steps:
       - name: Checkout Code
@@ -42,23 +40,57 @@ jobs:
       - name: Run Tests
         run: ${{ matrix.make }} ${{ matrix.test }}
 
-      - name: Generate coverage report
-        working-directory: ${{ matrix.package }}
+      - name: Summarize coverage
         run: |
-          xcrun llvm-cov export -format="lcov" \
-            .build/debug/${{ matrix.tests }}.xctest/Contents/MacOS/${{ matrix.tests }} \
-            -instr-profile .build/debug/codecov/default.profdata \
-            > coverage.lcov
+          ./scripts/coverage-summary.sh "${{ matrix.package }}" "${{ matrix.tests }}" "${{ matrix.name }}" \
+            | tee coverage.md >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v6
+      - name: Upload coverage summary
+        uses: actions/upload-artifact@v7
         with:
-          files: ./${{ matrix.package }}/coverage.lcov
-          fail_ci_if_error: false
-          verbose: true
-          flags: ${{ matrix.flag }}
+          name: coverage-${{ matrix.name }}
+          path: coverage.md
+
+  # Posts both packages' coverage as one PR comment, edited in place on later pushes. Fork and
+  # Dependabot PRs get a read-only token, so they only have the summaries on their job pages.
+  coverage-comment:
+    name: Coverage comment
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Download coverage summaries
+        uses: actions/download-artifact@v8
+        with:
+          pattern: coverage-*
+
+      - name: Post or update the comment
         env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          marker="<!-- coverage-report -->"
+          {
+            echo "$marker"
+            echo "## Coverage"
+            echo
+            for summary in coverage-Arrow/coverage.md coverage-Generator/coverage.md; do
+              cat "$summary"
+              echo
+            done
+            echo "<sub>Commit ${{ github.event.pull_request.head.sha }}</sub>"
+          } > comment.md
+
+          id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            --jq "[.[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\")))][0].id // empty" | head -n 1)
+          if [ -n "$id" ]; then
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F body=@comment.md > /dev/null
+          else
+            gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file comment.md
+          fi
 
   # Generates a registry with this commit's generator and runs it against this commit's Arrow,
   # so a change to either side that breaks generated code fails here.
