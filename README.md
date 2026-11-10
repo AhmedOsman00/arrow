@@ -185,7 +185,8 @@ final class ViewModelModule: TransientScope {
 4. Function parameters without defaults are treated as injectable dependencies
 5. Use `@Named("...")` to reference named dependencies in parameters
 6. Use `@Name("...")` macro to mark providers that create named dependencies. It lives in the opt-in
-   `ArrowMacros` product (`import ArrowMacros`), so only targets that use it build swift-syntax
+   `ArrowMacros` product (`import ArrowMacros`), so only targets that use it build swift-syntax. To skip the
+   macro entirely, write it as a doc-comment marker on its own line: `/// @Name("...")`
 7. Optional parameters (`cache: Cache?`) are resolved with `tryResolve`, so they're `nil` when nothing provides them
 8. A `@MainActor` module gets a `@MainActor` registry; give the module a `nonisolated init()`. Resolve its
    dependencies on the main thread: their factories check and crash otherwise

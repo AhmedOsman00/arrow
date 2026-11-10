@@ -7,6 +7,8 @@
 /// - Parameter value: The custom name for this dependency provider
 ///
 /// Declared in the opt-in `ArrowMacros` product, so only targets that use it build swift-syntax.
+/// To name a provider without this product, write `/// @Name("...")` on its own line in the
+/// provider's doc comment instead; the code generator reads either form.
 ///
 /// ## Usage
 /// ```swift
