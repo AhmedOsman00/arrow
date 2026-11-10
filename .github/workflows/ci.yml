@@ -6,8 +6,26 @@ on:
 
 jobs:
   lint-and-test:
-    name: Build and Test
+    name: ${{ matrix.name }}
     runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Arrow
+            package: "."
+            make: make
+            lint: lint-library
+            test: test-library
+            tests: ArrowPackageTests
+            flag: arrow
+          - name: Generator
+            package: Generator
+            make: make -C Generator
+            lint: lint
+            test: test
+            tests: ArrowGeneratorPackageTests
+            flag: generator
 
     steps:
       - name: Checkout Code
@@ -15,6 +33,8 @@ jobs:
 
       - name: Setup Swift
         uses: ./.github/actions/setup-swift
+        with:
+          package: ${{ matrix.package }}
 
       # Keyed on the pinned Mintfile, so SwiftLint is only rebuilt when its version changes.
       # PRs can read caches saved on main (see cache-mint.yml).
@@ -32,24 +52,60 @@ jobs:
           mint bootstrap
 
       - name: Run Linter
-        run: make lint
+        run: ${{ matrix.make }} ${{ matrix.lint }}
 
       - name: Run Tests
-        run: make test
+        run: ${{ matrix.make }} ${{ matrix.test }}
 
       - name: Generate coverage report
+        working-directory: ${{ matrix.package }}
         run: |
           xcrun llvm-cov export -format="lcov" \
-            .build/debug/ArrowPackageTests.xctest/Contents/MacOS/ArrowPackageTests \
+            .build/debug/${{ matrix.tests }}.xctest/Contents/MacOS/${{ matrix.tests }} \
             -instr-profile .build/debug/codecov/default.profdata \
             > coverage.lcov
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v6
         with:
-          files: ./coverage.lcov
+          files: ./${{ matrix.package }}/coverage.lcov
           fail_ci_if_error: false
           verbose: true
-          flags: swift
+          flags: ${{ matrix.flag }}
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  # Generates a registry with this commit's generator and runs it against this commit's Arrow,
+  # so a change to either side that breaks generated code fails here.
+  compatibility:
+    name: Generator and Arrow compatibility
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Setup Swift
+        uses: ./.github/actions/setup-swift
+        with:
+          package: Compatibility
+
+      - name: Generate, Build and Run
+        run: make compatibility
+
+  # The main branch ruleset requires this check, so it stands for every job above.
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [lint-and-test, compatibility]
+
+    steps:
+      - name: Require every job to pass
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Results: $RESULTS"
+          for result in $RESULTS; do
+            [ "$result" = "success" ] || exit 1
+          done
