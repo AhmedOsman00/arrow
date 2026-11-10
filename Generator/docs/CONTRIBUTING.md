@@ -17,7 +17,7 @@ Thank you for your interest in contributing to Arrow Generator! This document pr
 
 Before you begin:
 
-1. Check existing [issues](https://github.com/AhmedOsman00/arrow-generator/issues) to see if your concern has already been reported
+1. Check existing [issues](https://github.com/AhmedOsman00/arrow/issues) to see if your concern has already been reported
 2. For new features, consider opening an issue first to discuss your proposal
 3. For bug fixes, feel free to submit a PR directly with a clear description
 
@@ -40,11 +40,11 @@ brew install swiftlint
 
 ```bash
 # Clone the repository
-git clone https://github.com/AhmedOsman00/arrow-generator.git
-cd arrow-generator
+git clone https://github.com/AhmedOsman00/arrow.git
+cd arrow
 
-# Build the project
-make build
+# Build the generator
+make build-generator
 
 # Run tests
 make test
@@ -255,7 +255,7 @@ When requesting features, please:
 If you have questions about contributing:
 
 1. Check the [README.md](../README.md) for project documentation
-2. Review existing [issues](https://github.com/AhmedOsman00/arrow-generator/issues)
+2. Review existing [issues](https://github.com/AhmedOsman00/arrow/issues)
 3. Open a new issue with your question
 
 ## Code of Conduct

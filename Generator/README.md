@@ -1,9 +1,9 @@
 # Arrow Generator
 
-[![PR Quality Check](https://github.com/AhmedOsman00/arrow-generator/actions/workflows/pr-check.yml/badge.svg)](https://github.com/AhmedOsman00/arrow-generator/actions/workflows/pr-check.yml)
-[![Release](https://github.com/AhmedOsman00/arrow-generator/actions/workflows/release.yml/badge.svg)](https://github.com/AhmedOsman00/arrow-generator/actions/workflows/release.yml)
+[![CI](https://github.com/AhmedOsman00/arrow/actions/workflows/ci.yml/badge.svg)](https://github.com/AhmedOsman00/arrow/actions/workflows/ci.yml)
+[![Release](https://github.com/AhmedOsman00/arrow/actions/workflows/release.yml/badge.svg)](https://github.com/AhmedOsman00/arrow/actions/workflows/release.yml)
 
-A Swift command-line tool that automatically generates dependency injection container registration code for the [Arrow](https://github.com/AhmedOsman00/Arrow) dependency injection framework.
+A Swift command-line tool that automatically generates dependency injection container registration code for the [Arrow](../README.md) dependency injection framework.
 
 ## Overview
 
@@ -26,7 +26,7 @@ This eliminates the tedious and error-prone task of manually writing dependency 
 - macOS 10.15 or later
 - Swift 6.2.1 or later
 - Xcode (for Xcode project mode)
-- [Arrow](https://github.com/AhmedOsman00/Arrow) 1.1.0 or later in the project that uses the generated code
+- [Arrow](../README.md) at the same version as the generator in the project that uses the generated code. They're released together from this repository.
 
 ## Installation
 
@@ -46,17 +46,17 @@ brew upgrade --cask arrow
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd arrow-generator
+git clone https://github.com/AhmedOsman00/arrow.git
+cd arrow
 
 # Automated setup (recommended) - installs all dependencies and configures environment
 make bootstrap
 
-# Build the project
-make build
+# Build the generator
+make build-generator
 
-# The executable will be in bin/arrow
-./bin/arrow --help
+# The executable will be in Generator/bin/arrow
+./Generator/bin/arrow --help
 ```
 
 **What `make bootstrap` does:**
@@ -70,10 +70,10 @@ make build
 
 ```bash
 # Copy to a directory in your PATH
-sudo cp bin/arrow /usr/local/bin/
+sudo cp Generator/bin/arrow /usr/local/bin/
 
 # Or create a symlink
-sudo ln -s $(pwd)/bin/arrow /usr/local/bin/arrow
+sudo ln -s $(pwd)/Generator/bin/arrow /usr/local/bin/arrow
 ```
 
 ## Usage
