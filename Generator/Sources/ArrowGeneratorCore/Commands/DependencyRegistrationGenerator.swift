@@ -58,7 +58,7 @@ public struct DependencyRegistrationGenerator: ParsableCommand {
 
   @Option(
     name: .customLong(Constants.extensionPathArgument),
-    help: "Path to the dependencies.generated.swift file (falls back to PROJECT_DIR environment variable)")
+    help: "Path to the dependencies.generated.swift file (falls back to ARROW_EXT_PATH, then <proj-root>)")
   var depsExtPath: String?
 
   @Option(
@@ -70,7 +70,7 @@ public struct DependencyRegistrationGenerator: ParsableCommand {
     name: .customLong(Constants.packageSourcesPathArgument),
     help:
       // swiftlint:disable:next line_length
-      "Path to a Swift Package sources directory (can be specified multiple times). In package mode the generated file is written to the first path"
+      "Path to a Swift Package sources directory (can be specified multiple times, falls back to ARROW_PACKAGE_PATHS). In package mode the generated file is written to the first path"
   )
   var packageSourcesPaths: [String] = []
 
@@ -78,7 +78,7 @@ public struct DependencyRegistrationGenerator: ParsableCommand {
     name: .customLong(Constants.externalPathArgument),
     help:
       // swiftlint:disable:next line_length
-      "Sources of dependencies provided by another registry (can be specified multiple times). Used for validation only; not generated"
+      "Sources of dependencies provided by another registry (can be specified multiple times, falls back to ARROW_EXTERNAL_PATHS). Used for validation only; not generated"
   )
   var externalPaths: [String] = []
 
@@ -86,22 +86,26 @@ public struct DependencyRegistrationGenerator: ParsableCommand {
     name: .customLong(Constants.registryNameArgument),
     help:
       // swiftlint:disable:next line_length
-      "Name of the generated registry type. Defaults to <name>Dependencies, using the first --package-path in package mode or PRODUCT_MODULE_NAME / TARGET_NAME in Xcode mode"
+      "Name of the generated registry type (falls back to ARROW_REGISTRY_NAME). Defaults to <name>Dependencies, using the first --package-path in package mode or PRODUCT_MODULE_NAME / TARGET_NAME in Xcode mode"
   )
   var registryName: String?
 
   public mutating func run() throws {
     let logger = Logger(isVerbose: verbose)
     let swiftHandler = SwiftFilesHandler(logger: logger)
+    let environment = ProcessInfo.processInfo.environment
+    // Command-line options win over build settings. Each option is read only once its mode needs it.
+    let settings = BuildSettings(environment: environment)
 
     guard !isPackage else {
+      let packageSourcesPaths = packageSourcesPaths.isEmpty ? settings.packagePaths : packageSourcesPaths
       guard !packageSourcesPaths.isEmpty else {
         throw ValidationError.missingArgument(Constants.packageSourcesPathArgument)
       }
 
       let packageName = URL(fileURLWithPath: packageSourcesPaths[0]).standardizedFileURL.lastPathComponent
       let registry = RegistryConfiguration(
-        name: registryName ?? RegistryConfiguration.defaultName(for: packageName),
+        name: registryName ?? settings.registryName ?? RegistryConfiguration.defaultName(for: packageName),
         isPublic: true)
       let packageHandler = PackageHandler(
         swiftHandler: swiftHandler,
@@ -109,30 +113,29 @@ public struct DependencyRegistrationGenerator: ParsableCommand {
         logger: logger)
       return try packageHandler.addDependenciesFileToSwiftPackage(
         packageSourcesPaths: packageSourcesPaths,
-        externalPaths: externalPaths,
+        externalPaths: externalPaths.isEmpty ? settings.externalPaths : externalPaths,
         registry: registry)
     }
 
     guard
-      let projRoot = projRoot ?? ProcessInfo.processInfo.environment["PROJECT_DIR"]
+      let projRoot = projRoot ?? environment["PROJECT_DIR"]
     else {
       throw ValidationError.missingArgument(Constants.projRootArgument)
     }
 
-    let environment = ProcessInfo.processInfo.environment
     let targetName = environment["PRODUCT_MODULE_NAME"] ?? environment["TARGET_NAME"] ?? "App"
     let registry = RegistryConfiguration(
-      name: registryName ?? RegistryConfiguration.defaultName(for: targetName),
+      name: registryName ?? settings.registryName ?? RegistryConfiguration.defaultName(for: targetName),
       isPublic: false)
-    let depsExtPath = depsExtPath ?? "\(projRoot)/\(Constants.generatedFileName)"
+    let depsExtPath = depsExtPath ?? settings.extPath ?? "\(projRoot)/\(Constants.generatedFileName)"
     let xcodehandler = XcodeProjHandler(
       swiftHandler: swiftHandler,
       generatedFileName: Constants.generatedFileName,
       logger: logger)
     try xcodehandler.addDependenciesFileToXcodeProject(
       projRoot: projRoot,
-      packageSourcesPaths: packageSourcesPaths,
-      externalPaths: externalPaths,
+      packageSourcesPaths: packageSourcesPaths.isEmpty ? settings.packagePaths : packageSourcesPaths,
+      externalPaths: externalPaths.isEmpty ? settings.externalPaths : externalPaths,
       depsExtPath: depsExtPath,
       registry: registry)
   }

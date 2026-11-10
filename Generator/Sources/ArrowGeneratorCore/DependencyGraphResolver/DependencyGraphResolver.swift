@@ -19,14 +19,38 @@ import Foundation
 final class DependencyGraphResolver {
   private let data: [DependencyModule]
 
+  /// IDs of every provided dependency
+  private let provided: Set<String>
+
   /// Adjacency list representing the dependency graph
   /// Key: dependency ID, Value: list of dependency IDs it depends on
   private let graph: [String: [String]]
 
   init(data: [DependencyModule]) {
     self.data = data
-    let tuples = data.flatMap(\.types).map { ($0.id.rawValue, $0.dependencies.map(\.rawValue)) }
-    self.graph = Dictionary(tuples) { $1 }
+    let provided = data.flatMap(\.types).map(\.id.rawValue).asSet()
+    let tuples = data.flatMap(\.types).map { ($0.id.rawValue, $0.dependencies(provided: provided).map(\.rawValue)) }
+    self.provided = provided
+    // Providers in different `#if` branches share an ID; the node depends on what either needs.
+    self.graph = Dictionary(tuples) { $0 + $1 }
+  }
+
+  /// Warnings for singletons in `modules` that depend on a transient dependency.
+  ///
+  /// A singleton resolves its dependencies once, so it keeps a single instance of the transient
+  /// dependency forever, which is rarely what the transient scope was chosen for.
+  func captiveDependencyWarnings(in modules: [DependencyModule]) -> [String] {
+    let transient = data.filter { $0.scope == .transient }.flatMap(\.types).map(\.id).asSet()
+    return modules.filter { $0.scope != .transient }.flatMap { module in
+      module.types.sorted { $0.id.rawValue < $1.id.rawValue }.flatMap { dependency in
+        dependency.dependencies(provided: provided)
+          .filter { transient.contains(DependencyID($0.rawValue)) }
+          .map {
+            "`\(module.name).\(dependency.block)` is a \(module.scope.description) but depends on transient "
+              + "\(Self.describe($0.rawValue)), so it keeps one instance of it forever."
+          }
+      }
+    }
   }
 
   /// Validates the dependency graph and returns dependencies in topological order
@@ -110,19 +134,32 @@ final class DependencyGraphResolver {
 }
 
 private extension DependencyGraphResolver {
+  /// `_:Cache` -> `` `Cache` ``, `primary:Cache` -> `` `Cache` named "primary" ``.
+  static func describe(_ id: String) -> String {
+    let parts = id.split(separator: ":", maxSplits: 1).map(String.init)
+    guard parts.count == 2 else { return "`\(id)`" }
+    return parts[0] == "_" ? "`\(parts[1])`" : "`\(parts[1])` named \"\(parts[0])\""
+  }
+
   func validateAllDependencyFound() throws {
-    let dependencies = data.flatMap(\.types).flatMap(\.dependencies).map(\.rawValue).asSet()
-    let missingDependencies = dependencies.subtracting(graph.keys)
+    let missingDependencies = Set(graph.values.joined()).subtracting(provided)
 
     guard missingDependencies.isEmpty else {
       throw DependencyError.missingDependencies(missingDependencies)
     }
   }
 
+  /// Two providers may share an ID only when they sit in different branches of the same `#if`.
   func validateNoDuplicateDependencies() throws {
-    var set = Set<DependencyID>()
-    let types = data.flatMap(\.types).map(\.id)
-    let duplicateDependencies = types.filter { !set.insert($0).inserted }
+    var seen = [DependencyID: [Dependency]]()
+    var duplicateDependencies = [DependencyID]()
+    for dependency in data.flatMap(\.types) {
+      let others = seen[dependency.id, default: []]
+      if others.contains(where: { !$0.condition.isExclusive(with: dependency.condition) }) {
+        duplicateDependencies.append(dependency.id)
+      }
+      seen[dependency.id] = others + [dependency]
+    }
 
     guard duplicateDependencies.isEmpty else {
       throw DependencyError.duplicateDependencies(duplicateDependencies.map(\.rawValue))

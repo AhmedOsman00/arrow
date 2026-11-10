@@ -32,7 +32,11 @@ final class XcodeProjHandler {
       throw ValidationError.fileNotFound
     }
 
-    try file.write(toFile: depsExtPath, atomically: true, encoding: .utf8)
+    if try file.writeIfChanged(toFile: depsExtPath) {
+      logger.log("✅ Wrote \(depsExtPath)")
+    } else {
+      logger.log("✅ \(depsExtPath) is up to date")
+    }
   }
 
   enum ValidationError: LocalizedError {

@@ -1,3 +1,4 @@
+import SwiftParser
 import XCTest
 
 @testable import ArrowGeneratorCore
@@ -142,6 +143,64 @@ class DependencyResolverTests: XCTestCase {
     let order = try resolver.resolve()
     XCTAssertTrue(order.isEmpty)
   }
+
+  func testNameMatchingTypeName_isDuplicateOfUnnamed() throws {
+    // The container keys an unnamed `Service` by its type name, so these two would collide at runtime.
+    let module: DependencyModule = .fixture(
+      types: [
+        .fixture(type: "Service", block: "a"),
+        .fixture(type: "Service", name: "Service", block: "b"),
+      ])
+
+    XCTAssertThrowsError(try DependencyGraphResolver(data: [module]).validate())
+  }
+
+  func testEquivalentTypeSpellings_resolveToSameDependency() throws {
+    let module: DependencyModule = .fixture(
+      types: [
+        .fixture(type: "A", dependencies: ["Array<String>": nil, "Optional<B>": nil, "[String : Int]": nil]),
+        .fixture(type: "[String]", block: "strings"),
+        .fixture(type: "B?", block: "b"),
+        .fixture(type: "Dictionary<String, Int>", block: "dictionary"),
+      ])
+
+    XCTAssertNoThrow(try DependencyGraphResolver(data: [module]).resolveAndValidate())
+  }
+
+  func testDuplicatesInExclusiveIfBranches_areAllowed() throws {
+    let modules = try parseModules(
+      """
+      final class Module: TransientScope {
+          #if DEBUG
+          var logger: Logger { ConsoleLogger() }
+          #else
+          var logger: Logger { NoopLogger() }
+          #endif
+      }
+      """)
+
+    XCTAssertEqual(try DependencyGraphResolver(data: modules).resolveAndValidate(), [.init("_:Logger")])
+  }
+
+  func testDuplicatesInIndependentIfBlocks_areRejected() throws {
+    let modules = try parseModules(
+      """
+      final class Module: TransientScope {
+          #if DEBUG
+          func debugLogger() -> Logger { ConsoleLogger() }
+          #endif
+          #if BETA
+          func betaLogger() -> Logger { BetaLogger() }
+          #endif
+      }
+      """)
+
+    XCTAssertThrowsError(try DependencyGraphResolver(data: modules).validate())
+  }
+
+  private func parseModules(_ source: String) throws -> [DependencyModule] {
+    try Array(DependencyModulesParser(viewMode: .all).parse(Parser.parse(source: source)))
+  }
 }
 
 extension DependencyModule {
@@ -175,5 +234,60 @@ extension Dependency {
       type: type,
       block: block,
       parameters: mergedParameters)
+  }
+}
+
+// MARK: - Optional parameters and captive dependencies
+
+extension DependencyResolverTests {
+  func testOptionalParameter_isNotMissingWhenWrappedTypeIsAbsent() throws {
+    let module = DependencyModule.fixture(types: [.fixture(type: "Service", dependencies: ["Cache?": nil])])
+
+    XCTAssertEqual(try DependencyGraphResolver(data: [module]).resolveAndValidate(), [.init("_:Service")])
+  }
+
+  func testOptionalParameter_isOrderedAfterWrappedType() throws {
+    let module = DependencyModule.fixture(types: [
+      .fixture(type: "Service", dependencies: ["Optional<Cache>": "main"]),
+      .fixture(type: "Cache", name: "main"),
+    ])
+
+    XCTAssertEqual(
+      try DependencyGraphResolver(data: [module]).resolveAndValidate(), [.init("main:Cache"), .init("_:Service")])
+  }
+
+  func testCaptiveDependencyWarnings_flagSingletonsDependingOnTransients() {
+    let transient = DependencyModule.fixture(
+      name: "Transient", scope: .transient, types: [.fixture(type: "Formatter")])
+    let singleton = DependencyModule.fixture(
+      name: "Singleton", scope: .singleton,
+      types: [
+        .fixture(type: "Service", block: "service", dependencies: ["Formatter": nil]),
+        .fixture(type: "Clock", block: "clock"),
+      ])
+    let lazy = DependencyModule.fixture(
+      name: "Lazy", scope: .lazySingleton,
+      types: [.fixture(type: "Report", block: "report", dependencies: ["Formatter?": nil, "Clock": nil])])
+    let resolver = DependencyGraphResolver(data: [transient, singleton, lazy])
+
+    XCTAssertEqual(
+      resolver.captiveDependencyWarnings(in: [transient, singleton, lazy]),
+      [
+        "`Singleton.service` is a singleton but depends on transient `Formatter`, so it keeps one instance of it forever.",
+        "`Lazy.report` is a lazySingleton but depends on transient `Formatter`, so it keeps one instance of it forever.",
+      ])
+    XCTAssertEqual(resolver.captiveDependencyWarnings(in: [transient]), [])
+  }
+}
+
+final class TypeNameTests: XCTestCase {
+  func testOptionalWrapped() {
+    XCTAssertEqual(TypeName.optionalWrapped("Cache?"), "Cache")
+    XCTAssertEqual(TypeName.optionalWrapped("Cache!"), "Cache")
+    XCTAssertEqual(TypeName.optionalWrapped("Optional<[String]>"), "[String]")
+    XCTAssertEqual(TypeName.optionalWrapped("(any Cache)?"), "any Cache")
+    XCTAssertEqual(TypeName.optionalWrapped("Cache??"), "Cache?")
+    XCTAssertNil(TypeName.optionalWrapped("Cache"))
+    XCTAssertNil(TypeName.optionalWrapped("[Cache?]"))
   }
 }

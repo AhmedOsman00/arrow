@@ -18,16 +18,18 @@ extension SwiftFilesHandlerProtocol {
   ///
   /// Files under `externalPaths` belong to other registries: their providers count for validation
   /// and ordering but aren't emitted, even when an external path is nested inside one of `paths`.
+  /// So do files in a Swift package nested inside one of `paths`, which generates its own registry.
   func generateDependenciesFile(
     paths: [String],
     externalPaths: [String],
     registry: RegistryConfiguration
   ) throws -> String {
     let externalFiles = try getAllSwiftFiles(in: externalPaths)
-    let ownFiles = try getAllSwiftFiles(in: paths).subtracting(externalFiles)
+    let files = try getAllSwiftFiles(in: paths).subtracting(externalFiles)
+    let nestedPackageFiles = SwiftFilesHandler.nestedPackageFiles(files, roots: paths)
     return try generateDependenciesFile(
-      modules: parseSwiftFiles(ownFiles),
-      externalModules: parseSwiftFiles(externalFiles),
+      modules: parseSwiftFiles(files.subtracting(nestedPackageFiles)),
+      externalModules: parseSwiftFiles(externalFiles.union(nestedPackageFiles)),
       registry: registry)
   }
 }
@@ -134,24 +136,55 @@ final class SwiftFilesHandler: SwiftFilesHandlerProtocol {
     return files
   }
 
+  /// Files in a Swift package nested below each of `roots` that lists them, so the package's own
+  /// `Package.swift` sits strictly between the root and the file. A root inside a package (for
+  /// example `--package-path Packages/Core/Sources/Core`) keeps that package's files its own.
+  static func nestedPackageFiles(_ files: Set<String>, roots: [String]) -> Set<String> {
+    let roots = roots.map { URL(fileURLWithPath: $0).standardizedFileURL.path }
+    let packages =
+      files
+      .map { URL(fileURLWithPath: $0) }
+      .filter { $0.lastPathComponent == "Package.swift" }
+      .map { $0.deletingLastPathComponent().path }
+    return files.filter { file in
+      let containingRoots = roots.filter { file.hasPrefix($0 + "/") }
+      return !containingRoots.isEmpty
+        && containingRoots.allSatisfy { root in
+          packages.contains { $0.hasPrefix(root + "/") && file.hasPrefix($0 + "/") }
+        }
+    }
+  }
+
   func parseSwiftFiles(_ swiftFiles: Set<String>) throws -> [DependencyModule] {
     logger.log("📝 Starting to parse \(swiftFiles.count) Swift files")
 
-    // Sorted so the generated file is identical between runs.
-    return try swiftFiles.sorted().flatMap {
-      logger.log("Parsing file: \($0)")
-
-      let path = URL(fileURLWithPath: $0)
-      let content = try String(contentsOf: path, encoding: .utf8)
-      let tree = Parser.parse(source: content)
-      let syntaxVisitor = DependencyModulesParser(viewMode: .all)
-      let fileModules = syntaxVisitor.parse(tree).sorted { $0.name < $1.name }
-
-      logger.log("  Found \(fileModules.count) modules in \(path.lastPathComponent)")
-      fileModules.forEach { logger.log("    - \($0.name)") }
-
-      return fileModules
+    // Sorted so the generated file is identical between runs. Files are parsed in parallel, then
+    // handled in this order.
+    let files = swiftFiles.sorted()
+    let results = ParseResults(count: files.count)
+    DispatchQueue.concurrentPerform(iterations: files.count) { index in
+      results[index] = Result { try Self.parse(files[index]) }
     }
+
+    // Unsupported providers are collected from every file so they're all reported in one run.
+    var diagnostics = [String]()
+    var modules = [DependencyModule]()
+    for (file, result) in zip(files, results.values) {
+      switch try result.get() {
+      case .skipped:
+        logger.log("Skipped file without modules: \(file)")
+      case .unsupportedProviders(let fileDiagnostics):
+        diagnostics += fileDiagnostics
+      case .modules(let fileModules):
+        logger.log("Parsed file: \(file)")
+        logger.log("  Found \(fileModules.count) modules in \(URL(fileURLWithPath: file).lastPathComponent)")
+        fileModules.forEach { logger.log("    - \($0.name)") }
+        modules += fileModules
+      }
+    }
+
+    guard diagnostics.isEmpty else { throw ParserError.unsupportedProviders(diagnostics) }
+    return modules
   }
 
   func generateDependenciesFile(
@@ -162,8 +195,10 @@ final class SwiftFilesHandler: SwiftFilesHandlerProtocol {
     logger.log("🔨 Generating \(registry.name) from \(modules.count) modules (\(externalModules.count) external)")
 
     logger.log("Resolving dependency graph...")
-    let buildMap = try DependencyGraphResolver(data: modules + externalModules).resolveAndValidate()
+    let resolver = DependencyGraphResolver(data: modules + externalModules)
+    let buildMap = try resolver.resolveAndValidate()
     logger.log("✅ Dependency graph resolved with \(buildMap.count) entries")
+    resolver.captiveDependencyWarnings(in: modules).forEach(logger.warn)
 
     logger.log("Build order:")
     buildMap.enumerated().forEach { logger.log("  \($1)-> \($0 + 1)") }
@@ -184,6 +219,48 @@ final class SwiftFilesHandler: SwiftFilesHandlerProtocol {
       case let .git(root, message):
         "Git error in \(root). \(message)"
       }
+    }
+  }
+}
+
+private extension SwiftFilesHandler {
+  enum FileParse {
+    case skipped
+    case modules([DependencyModule])
+    case unsupportedProviders([String])
+  }
+
+  static func parse(_ file: String) throws -> FileParse {
+    let content = try String(contentsOf: URL(fileURLWithPath: file), encoding: .utf8)
+    // A module conforms to one of the `...Scope` protocols, so a file without the word declares none.
+    guard content.contains("Scope") else { return .skipped }
+
+    let tree = Parser.parse(source: content)
+    do {
+      let modules = try DependencyModulesParser(viewMode: .all).parse(tree, fileName: file)
+      return .modules(modules.sorted { $0.name < $1.name })
+    } catch ParserError.unsupportedProviders(let diagnostics) {
+      return .unsupportedProviders(diagnostics)
+    }
+  }
+
+  /// Per-file results, written from `concurrentPerform`.
+  final class ParseResults: @unchecked Sendable {
+    private let lock = NSLock()
+    private var results: [Result<FileParse, Error>?]
+
+    init(count: Int) {
+      results = Array(repeating: nil, count: count)
+    }
+
+    subscript(index: Int) -> Result<FileParse, Error>? {
+      get { lock.withLock { results[index] } }
+      set { lock.withLock { results[index] = newValue } }
+    }
+
+    /// Every result, once all iterations have finished.
+    var values: [Result<FileParse, Error>] {
+      lock.withLock { results.compactMap { $0 } }
     }
   }
 }

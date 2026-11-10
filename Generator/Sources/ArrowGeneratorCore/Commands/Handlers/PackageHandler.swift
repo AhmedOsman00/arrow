@@ -28,6 +28,10 @@ final class PackageHandler {
       externalPaths: externalPaths,
       registry: registry)
     let outputPath = Path(outputDirectory) + Path(generatedFileName)
-    try file.write(toFile: outputPath.string, atomically: true, encoding: .utf8)
+    if try file.writeIfChanged(toFile: outputPath.string) {
+      logger.log("✅ Wrote \(outputPath.string)")
+    } else {
+      logger.log("✅ \(outputPath.string) is up to date")
+    }
   }
 }
