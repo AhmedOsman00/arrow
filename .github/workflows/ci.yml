@@ -39,7 +39,7 @@ jobs:
       # Keyed on the pinned Mintfile, so SwiftLint is only rebuilt when its version changes.
       # PRs can read caches saved on main (see cache-mint.yml).
       - name: Cache Mint
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.mint
           key: ${{ runner.os }}-mint-${{ hashFiles('Mintfile') }}
