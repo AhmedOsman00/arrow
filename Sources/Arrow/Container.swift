@@ -83,19 +83,20 @@ public final class Container: Registerable, @unchecked Sendable {
     }
 
     // Built outside the lock so the factory can resolve or register other dependencies.
+    let description = key.description(typeName: "\(type)")
     let entry: Registration.Entry
     switch objectScope {
     case .singleton:
       entry = .instance(factory(self))
     case .lazySingleton:
-      entry = .lazy(LazyInstance(description: "\(key.name) of type '\(type)'") { factory(self) })
+      entry = .lazy(LazyInstance(description: description) { factory(self) })
     case .transient:
       entry = .factory { factory(self) }
     }
 
     locked {
       guard dependencies[key] == nil else { fatalError(alreadyRegistered()) }
-      dependencies[key] = Registration(typeName: "\(type)", entry: entry)
+      dependencies[key] = Registration(typeName: "\(type)", description: description, entry: entry)
     }
   }
 
@@ -227,6 +228,11 @@ private extension Container {
       self.type = ObjectIdentifier(type)
       self.name = name ?? "\(type)"
     }
+
+    /// `'Service'`, or `'Service' named "primary"` when the name isn't the type name.
+    func description(typeName: String) -> String {
+      name == typeName ? "'\(typeName)'" : "'\(typeName)' named \"\(name)\""
+    }
   }
 
   struct Registration {
@@ -238,22 +244,60 @@ private extension Container {
 
     /// Kept for error messages, since `ObjectIdentifier` isn't readable.
     let typeName: String
+    let description: String
     let entry: Entry
   }
 
   func lookup<Dependency>(_ type: Dependency.Type, name: String?) -> Dependency? {
-    let registration = locked { dependencies[Key(type, name: name)] }
+    let key = Key(type, name: name)
+    guard let registration = locked({ dependencies[key] }) else { return nil }
 
     // Factories run outside the container lock so they can resolve their own dependencies.
-    switch registration?.entry {
+    switch registration.entry {
     case .instance(let instance):
       return instance as? Dependency
     case .lazy(let lazyInstance):
-      return lazyInstance.value() as? Dependency
+      return building(key, registration.description, lazyInstance.value) as? Dependency
     case .factory(let factory):
-      return factory() as? Dependency
-    case nil:
-      return nil
+      return building(key, registration.description, factory) as? Dependency
+    }
+  }
+
+  /// Runs `build` with `key` on this thread's resolution stack, crashing with the cycle's path if
+  /// it's already there. Without this a transient cycle recurses until the stack overflows.
+  func building(_ key: Key, _ description: String, _ build: () -> Any) -> Any {
+    let stack = ResolutionStack.current
+    let frame = ResolutionStack.Frame(container: ObjectIdentifier(self), key: key, description: description)
+    if let start = stack.frames.firstIndex(where: { $0.container == frame.container && $0.key == key }) {
+      let cycle = (stack.frames[start...] + [frame]).map(\.description).joined(separator: " -> ")
+      fatalError("Circular dependency: \(cycle)")
+    }
+
+    stack.frames.append(frame)
+    defer { stack.frames.removeLast() }
+    return build()
+  }
+
+  /// The dependencies being built on the current thread, outermost first.
+  final class ResolutionStack {
+    struct Frame {
+      let container: ObjectIdentifier
+      let key: Key
+      let description: String
+    }
+
+    private static let threadKey = "Arrow.Container.ResolutionStack"
+
+    var frames = [Frame]()
+
+    static var current: ResolutionStack {
+      let storage = Thread.current.threadDictionary
+      if let stack = storage[threadKey] as? ResolutionStack {
+        return stack
+      }
+      let stack = ResolutionStack()
+      storage[threadKey] = stack
+      return stack
     }
   }
 
@@ -261,10 +305,11 @@ private extension Container {
   ///
   /// Uses its own lock rather than the container's, so the factory can resolve other dependencies.
   /// The lock is recursive so a factory that resolves its own dependency, directly or through
-  /// others, re-enters it and crashes with a message instead of deadlocking.
+  /// others, re-enters it and crashes with a message instead of deadlocking. A cycle split across
+  /// threads is caught by `LazyCreations` before a thread starts waiting.
   final class LazyInstance: @unchecked Sendable {
+    let description: String
     private let lock = NSRecursiveLock()
-    private let description: String
     private let factory: () -> Any
     private var instance: Any?
     private var isCreating = false
@@ -275,7 +320,12 @@ private extension Container {
     }
 
     func value() -> Any {
-      lock.lock()
+      let thread = ObjectIdentifier(Thread.current)
+      if !lock.try() {
+        LazyCreations.shared.wait(on: self, from: thread)
+        lock.lock()
+        LazyCreations.shared.stopWaiting(from: thread)
+      }
       defer { lock.unlock() }
 
       if let instance {
@@ -286,11 +336,65 @@ private extension Container {
         fatalError("Circular dependency: lazy singleton \(description) was resolved while it was being created.")
       }
       isCreating = true
-      defer { isCreating = false }
+      LazyCreations.shared.startCreating(self, on: thread)
+      defer {
+        isCreating = false
+        LazyCreations.shared.finishCreating(self)
+      }
 
       let created = factory()
       instance = created
       return created
+    }
+  }
+
+  /// Which thread is creating each lazy singleton, and which one each thread is waiting for.
+  ///
+  /// Two threads that each create a lazy singleton the other needs would wait on each other's lock
+  /// forever. Before waiting, a thread follows the chain of creators and what they wait for: if it
+  /// leads back to itself, the singletons depend on each other, so it crashes with the path instead.
+  final class LazyCreations: @unchecked Sendable {
+    static let shared = LazyCreations()
+
+    private let lock = NSLock()
+    /// Lazy instance -> the thread creating it.
+    private var creators = [ObjectIdentifier: ObjectIdentifier]()
+    /// Thread -> the lazy instance it's waiting for.
+    private var waits = [ObjectIdentifier: LazyInstance]()
+
+    func startCreating(_ instance: LazyInstance, on thread: ObjectIdentifier) {
+      lock.lock()
+      defer { lock.unlock() }
+      creators[ObjectIdentifier(instance)] = thread
+    }
+
+    func finishCreating(_ instance: LazyInstance) {
+      lock.lock()
+      defer { lock.unlock() }
+      creators[ObjectIdentifier(instance)] = nil
+    }
+
+    func wait(on instance: LazyInstance, from thread: ObjectIdentifier) {
+      lock.lock()
+      defer { lock.unlock() }
+
+      var chain = [instance]
+      while let creator = creators[ObjectIdentifier(chain[chain.count - 1])] {
+        if creator == thread {
+          // The last instance in the chain is one this thread is creating, and it needs the first.
+          let cycle = ([chain[chain.count - 1]] + chain).map(\.description).joined(separator: " -> ")
+          fatalError("Circular dependency between lazy singletons resolved on different threads: \(cycle)")
+        }
+        guard let awaited = waits[creator] else { break }
+        chain.append(awaited)
+      }
+      waits[thread] = instance
+    }
+
+    func stopWaiting(from thread: ObjectIdentifier) {
+      lock.lock()
+      defer { lock.unlock() }
+      waits[thread] = nil
     }
   }
 
