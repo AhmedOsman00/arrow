@@ -2,7 +2,7 @@
 BUILD_DIR := .build
 SWIFT_BUILD_FLAGS := -c release
 
-.PHONY: all build build-generator generate-version test lint install-hooks clean bootstrap help docs
+.PHONY: all build build-generator generate-version test test-library lint lint-library compatibility install-hooks clean bootstrap help docs
 
 # Default target
 all: build
@@ -18,8 +18,9 @@ help:
 	@echo "Development:"
 	@echo "  make build         - Build the Arrow library"
 	@echo "  make build-generator - Build the universal generator binary into Generator/bin/arrow"
-	@echo "  make test          - Run both packages' test suites"
-	@echo "  make lint          - Run SwiftLint in strict mode on both packages"
+	@echo "  make test          - Run both packages' test suites (test-library for Arrow only)"
+	@echo "  make lint          - Run SwiftLint in strict mode on both packages (lint-library for Arrow only)"
+	@echo "  make compatibility - Generate Compatibility/'s registry with this generator and run it against this Arrow"
 	@echo ""
 	@echo "Other:"
 	@echo "  make docs          - Generate documentation"
@@ -90,20 +91,34 @@ build-generator:
 generate-version:
 	@$(MAKE) -C Generator generate-version VERSION="$(VERSION)"
 
-# Run tests
-test:
+# Run both packages' tests
+test: test-library
+	@$(MAKE) -C Generator test
+
+# Run Arrow's tests
+test-library:
 	@echo "🧪 Running tests..."
 	@swift test --enable-code-coverage
 	@echo "✅ Tests passed."
-	@$(MAKE) -C Generator test
 
-# Lint Swift files using SwiftLint (via Mint)
-lint:
+# Generate Compatibility/'s registry with this commit's generator, then build and run it against this
+# commit's Arrow, which checks what every kind of registration resolves to
+compatibility:
+	@echo "🔗 Checking the generator against Arrow..."
+	@swift run --package-path Generator arrow generate --is-package --package-path Compatibility/Sources/Compatibility
+	@swift run --package-path Compatibility
+	@echo "✅ Generated code builds and resolves."
+
+# Lint both packages
+lint: lint-library
+	@$(MAKE) -C Generator lint
+
+# Lint Arrow's Swift files using SwiftLint (via Mint)
+lint-library:
 	@which mint > /dev/null || { echo "⚠️  Mint not installed. Run: brew install mint"; exit 1; }
 	@echo "🔍 Running SwiftLint..."
 	@mint run swiftlint swiftlint --strict --reporter github-actions-logging
 	@echo "✅ Linting complete."
-	@$(MAKE) -C Generator lint
 
 # Generate documentation
 docs:
